@@ -6,7 +6,7 @@ require_relative "lib/avo/version"
 # Describe your gem and declare its dependencies:
 Gem::Specification.new do |spec|
   spec.name = "avo"
-  spec.version = 3.5.1
+  spec.version = "3.5.1"
   spec.authors = ["Adrian Marin", "Mihai Marin", "Paul Bob"]
   spec.email = ["avo@avohq.io"]
   spec.homepage = "https://avohq.io"
