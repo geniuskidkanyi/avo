@@ -8,7 +8,6 @@ module Avo
       attr_reader :resources
 
       def initialize(resources: nil, resource: nil, reflection: nil, parent_record: nil, parent_resource: nil, pagy: nil, query: nil)
-        super
         @resources = resources
         @resource = resource
         @reflection = reflection
@@ -17,6 +16,8 @@ module Avo
         @pagy = pagy
         @query = query
       end
+
+      delegate :js_map, to: :helpers
 
       def grid_layout_classes
         return unless render_table?
@@ -64,7 +65,7 @@ module Avo
         # If we have no proc and no default location method, don't try to create markers
         return [] unless resource_mappable?
 
-        resources
+        records_markers = resources
           .map do |resource|
             Avo::ExecutionContext.new(target: marker_proc, record: resource.record).handle
           end
@@ -72,6 +73,10 @@ module Avo
           .filter do |coordinates|
             coordinates[:latitude].present? && coordinates[:longitude].present?
           end
+
+        return records_markers if map_options[:extra_markers].nil?
+
+        records_markers + Avo::ExecutionContext.new(target: map_options[:extra_markers]).handle
       end
 
       def resource_mapkick_options
@@ -102,7 +107,7 @@ module Avo
       end
 
       def resource_mappable?
-        map_options[:record_marker].present? || @resources.first.record.respond_to?(:coordinates)
+        map_options[:record_marker].present? || map_options[:extra_markers].present? || @resources.first.record.respond_to?(:coordinates)
       end
     end
   end

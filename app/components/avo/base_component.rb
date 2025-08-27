@@ -1,17 +1,26 @@
 # frozen_string_literal: true
 
 class Avo::BaseComponent < ViewComponent::Base
+  extend PropInitializer::Properties
   include Turbo::FramesHelper
+  include Avo::Concerns::FindAssociationField
+
+  delegate :e, to: :helpers
+  delegate :d, to: :helpers
+  delegate :main_app, to: :helpers
+  delegate :avo, to: :helpers
 
   def has_with_trial(ability)
     Avo.license.has_with_trial(ability)
   end
 
+  def component_name = self.class.name.to_s.underscore
+
   private
 
   # Use the @parent_resource to fetch the field using the @reflection name.
   def field
-    @parent_resource.get_field_definitions.find { |f| f.id == @reflection.name }
+    find_association_field(resource: @parent_resource, association: params[:related_name] || @reflection.name)
   rescue
     nil
   end
@@ -55,12 +64,14 @@ class Avo::BaseComponent < ViewComponent::Base
   end
 
   def link_to_child_resource_is_enabled?
-    return field_linked_to_child_resource? if @parent_resource
+    enabled = field_linked_to_child_resource? if @parent_resource
+    return enabled unless enabled.nil?
 
     @resource.link_to_child_resource
   end
 
   def field_linked_to_child_resource?
-    field.present? && field.respond_to?(:link_to_child_resource) && field.link_to_child_resource
+    resolved_field = @reflection ? @parent_resource.get_field(params[:for_attribute] || @reflection.name) : field
+    resolved_field.link_to_child_resource if resolved_field.respond_to?(:link_to_child_resource)
   end
 end

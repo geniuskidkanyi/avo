@@ -36,17 +36,24 @@ module Avo
       attr_reader :nullable
       attr_reader :null_values
       attr_reader :format_using
+      attr_reader :format_display_using
+      attr_reader :format_index_using
+      attr_reader :format_show_using
+      attr_reader :format_edit_using
+      attr_reader :format_new_using
+      attr_reader :format_form_using
       attr_reader :autocomplete
       attr_reader :help
       attr_reader :default
-      attr_reader :as_avatar
       attr_reader :stacked
       attr_reader :for_presentation_only
+      attr_reader :for_attribute
 
       # Private options
       attr_reader :computable # if allowed to be computable
       attr_reader :computed # if block is present
       attr_reader :computed_value # the value after computation
+      attr_reader :copyable # if allowed to be copyable
 
       # Hydrated payload
       attr_accessor :record
@@ -68,22 +75,38 @@ module Avo
         @summarizable = args[:summarizable] || false
         @nullable = args[:nullable] || false
         @null_values = args[:null_values] || [nil, ""]
-        @format_using = args[:format_using] || nil
-        @update_using = args[:update_using] || nil
+        @format_using = args[:format_using]
+        @format_display_using = args[:format_display_using] || args[:decorate]
+
+        unless Rails.env.production?
+          if args[:decorate].present?
+            puts "[Avo DEPRECATION WARNING]: The `decorate` field configuration option is nolonger supported and will be removed in future versions. Please discontinue its use and solely utilize `format_display_using` instead."
+          end
+        end
+
+        @format_index_using = args[:format_index_using]
+        @format_show_using = args[:format_show_using]
+        @format_edit_using = args[:format_edit_using]
+        @format_new_using = args[:format_new_using]
+        @format_form_using = args[:format_form_using]
+        @update_using = args[:update_using]
+        @decorate = args[:decorate]
         @placeholder = args[:placeholder]
-        @autocomplete = args[:autocomplete] || nil
-        @help = args[:help] || nil
-        @default = args[:default] || nil
+        @autocomplete = args[:autocomplete]
+        @help = args[:help]
+        @default = args[:default]
         @visible = args[:visible]
-        @as_avatar = args[:as_avatar] || false
-        @html = args[:html] || nil
-        @view = Avo::ViewInquirer.new(args[:view]) || nil
-        @value = args[:value] || nil
-        @stacked = args[:stacked] || nil
+        @html = args[:html]
+        @view = Avo::ViewInquirer.new(args[:view])
+        @value = args[:value]
+        @stacked = args[:stacked]
         @for_presentation_only = args[:for_presentation_only] || false
         @resource = args[:resource]
         @action = args[:action]
         @components = args[:components] || {}
+        @for_attribute = args[:for_attribute]
+        @meta = args[:meta]
+        @copyable = args[:copyable] || false
 
         @args = args
 
@@ -111,9 +134,9 @@ module Avo
       # Secondly we'll try to find a translation key
       # We'll fallback to humanizing the id
       def name
-        return @name if custom_name?
-
-        if translation_key
+        if custom_name?
+          Avo::ExecutionContext.new(target: @name).handle
+        elsif translation_key
           translated_name default: default_name
         else
           default_name
@@ -131,7 +154,7 @@ module Avo
       end
 
       def table_header_label
-        name
+        @table_header_label ||= name
       end
 
       def custom_name?
@@ -146,70 +169,70 @@ module Avo
         Avo::ExecutionContext.new(target: @placeholder || name, record: record, resource: @resource, view: @view).handle
       end
 
+      def attribute_id = (@attribure_id ||= @for_attribute || @id)
+
       def value(property = nil)
         return @value if @value.present?
 
-        property ||= id
+        property ||= attribute_id
 
         # Get record value
-        final_value = record.send(property) if is_model?(record) && record.respond_to?(property)
+        final_value = @record.send(property) if is_model?(@record) && @record.respond_to?(property)
 
         # On new views and actions modals we need to prefill the fields with the default value if value is nil
-        if final_value.nil? && should_fill_with_default_value? && default.present?
+        if final_value.nil? && should_fill_with_default_value? && @default.present?
           final_value = computed_default_value
         end
 
         # Run computable callback block if present
-        if computable && block.present?
-          final_value = execute_block
+        if computable && @block.present?
+          final_value = execute_context(@block)
         end
 
-        # Run the value through resolver if present
-        if format_using.present?
-          final_value = Avo::ExecutionContext.new(
-            target: format_using,
-            value: final_value,
-            record: record,
-            resource: resource,
-            view: view,
-            field: self,
-            include: self.class.included_modules
-          ).handle
+        # Format value based on available formatter
+        final_value = format_value(final_value)
+
+        if @decorate.present? && @view.display?
+          final_value = execute_context(@decorate, value: final_value)
         end
 
         final_value
       end
 
-      def execute_block
+      def execute_context(target, **extra_args)
         Avo::ExecutionContext.new(
-          target: block,
-          record: record,
-          resource: resource,
-          view: view,
+          target:,
+          record: @record,
+          resource: @resource,
+          view: @view,
           field: self,
-          include: self.class.included_modules
+          include: self.class.included_modules,
+          **extra_args
         ).handle
       end
 
       # Fills the record with the received value on create and update actions.
       def fill_field(record, key, value, params)
+        key = @for_attribute.to_s if @for_attribute.present?
         return record unless has_attribute?(record, key)
 
-        if @update_using.present?
-          value = Avo::ExecutionContext.new(
-            target: @update_using,
-            record: record,
-            key: key,
-            value: value,
-            resource: resource,
-            field: self,
-            include: self.class.included_modules
-          ).handle
-        end
-
-        record.public_send(:"#{key}=", value)
+        record.public_send(:"#{key}=", apply_update_using(record, key, value, resource))
 
         record
+      end
+
+      def apply_update_using(record, key, value, resource)
+        return value if @update_using.nil?
+
+        Avo::ExecutionContext.new(
+          target: @update_using,
+          record:,
+          key:,
+          value:,
+          resource:,
+          field: self,
+          include: self.class.included_modules
+        ).handle
       end
 
       def has_attribute?(record, attribute)
@@ -236,11 +259,11 @@ module Avo
       end
 
       def record_errors
-        record.nil? ? {} : record.errors
+        record.present? ? record.errors : {}
       end
 
       def type
-        self.class.name.demodulize.to_s.underscore.gsub("_field", "")
+        @type ||= self.class.name.demodulize.to_s.underscore.gsub("_field", "")
       end
 
       def custom?
@@ -267,11 +290,19 @@ module Avo
 
       # Used by Avo to fill the record with the default value on :new and :edit views
       def assign_value(record:, value:)
-        id = type == "belongs_to" ? foreign_key : database_id
+        id = (type == "belongs_to") ? foreign_key : database_id
 
         if record.send(id).nil?
-          record.send("#{id}=", value)
+          record.send(:"#{id}=", value)
         end
+      end
+
+      def form_field_label
+        id
+      end
+
+      def meta
+        Avo::ExecutionContext.new(target: @meta, record: record, resource: @resource, view: @view).handle
       end
 
       private
@@ -299,7 +330,30 @@ module Avo
       def get_resource_by_model_class(model_class)
         resource = Avo.resource_manager.get_resource_by_model_class(model_class)
 
-        resource || (raise Avo::MissingResourceError.new(model_class))
+        resource || (raise Avo::MissingResourceError.new(model_class, self))
+      end
+
+      def format_value(value)
+        final_value = value
+
+        formatters_by_view = {
+          index: [:format_index_using, :format_display_using, :format_using],
+          show: [:format_show_using, :format_display_using, :format_using],
+          edit: [:format_edit_using, :format_form_using, :format_using],
+          new: [:format_new_using, :format_form_using, :format_using]
+        }
+
+        current_view = @view.to_sym
+        applicable_formatters = formatters_by_view[current_view]
+
+        applicable_formatters&.each do |formatter|
+          formatter_value = instance_variable_get(:"@#{formatter}")
+          if formatter_value.present?
+            return execute_context(formatter_value, value: final_value)
+          end
+        end
+
+        final_value
       end
     end
   end

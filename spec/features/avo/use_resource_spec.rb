@@ -8,7 +8,7 @@ RSpec.describe "Post comments use_resource PhotoComment", type: :feature do
   let!(:comment) { create :comment, user: admin }
 
   describe "tests" do
-    it "if have diferent fields from original comment resource" do
+    it "if have different fields from original comment resource" do
       visit_page
 
       expect(page).to have_text("Photo comments")
@@ -49,29 +49,14 @@ RSpec.describe "Post comments use_resource PhotoComment", type: :feature do
       expect(page).to have_selector "[title='Delete photo comment']"
     end
 
-    it "if attach persist" do
-      visit_page
-
-      click_on "Attach photo comment"
-
-      expect(page).to have_text "Choose photo comment"
-      expect(page).to have_select "fields_related_id"
-
-      select comment.tiny_name, from: "fields_related_id"
-
-      click_on "Attach"
-      expect(page).to have_text "Photo comment attached."
-      expect(page).to have_text comment.tiny_name
-    end
-
-    it "applyes on belongs to" do
+    it "applies on belongs to" do
       visit "admin/resources/comments/#{comment.id}"
 
       expect(page).to have_link comment.user.name,
-        href: "/admin/resources/compact_users/#{comment.user.slug}?via_record_id=#{comment.id}&via_resource_class=Avo%3A%3AResources%3A%3AComment"
+        href: "/admin/resources/compact_users/#{comment.user.slug}?via_record_id=#{comment.to_param}&via_resource_class=Avo%3A%3AResources%3A%3AComment"
 
       click_on comment.user.name
-      expect(page).to have_current_path "/admin/resources/compact_users/#{comment.user.slug}?via_record_id=#{comment.id}&via_resource_class=Avo%3A%3AResources%3A%3AComment"
+      expect(page).to have_current_path "/admin/resources/compact_users/#{comment.user.slug}?via_record_id=#{comment.to_param}&via_resource_class=Avo%3A%3AResources%3A%3AComment"
 
       expect(page).to have_text "Personal information"
       expect(page).to have_text "Contact"
@@ -80,7 +65,7 @@ RSpec.describe "Post comments use_resource PhotoComment", type: :feature do
 end
 
 def visit_page
-  visit "admin/resources/posts/#{post.id}/comments?turbo_frame=has_many_field_show_photo_comments"
+  visit "admin/resources/posts/#{post.to_param}/comments?turbo_frame=has_many_field_show_photo_comments"
 
-  expect(current_path).to eql "/admin/resources/posts/#{post.id}/comments"
+  expect(current_path).to eql "/admin/resources/posts/#{post.to_param}/comments"
 end

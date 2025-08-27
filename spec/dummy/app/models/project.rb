@@ -17,14 +17,25 @@
 #  progress       :integer
 #
 class Project < ApplicationRecord
-  enum stage: {
-    Discovery: "discovery",
-    Idea: "idea",
-    Done: "done",
-    "On hold": "on hold",
-    Cancelled: "cancelled",
-    Drafting: "drafting"
-  }
+  if Gem::Version.new(Rails.version) >= Gem::Version.new("7.1.0")
+    enum :stage, {
+      Discovery: "discovery",
+      Idea: "idea",
+      Done: "done",
+      "On hold": "on hold",
+      Cancelled: "cancelled",
+      Drafting: "drafting"
+    }
+  else
+    enum stage: {
+      Discovery: "discovery",
+      Idea: "idea",
+      Done: "done",
+      "On hold": "on hold",
+      Cancelled: "cancelled",
+      Drafting: "drafting"
+    }
+  end
 
   validates :name, presence: true
   validates :users_required, numericality: {greater_than: 9, less_than: 1000000}
@@ -39,5 +50,10 @@ class Project < ApplicationRecord
 
   def self.ransackable_attributes(auth_object = nil)
     ["budget", "country", "created_at", "description", "id", "meta", "name", "progress", "stage", "started_at", "status", "updated_at", "users_required"]
+  end
+
+  # Used to test tags on select mode with {value:,label:}
+  def dummy_field=(value)
+    TestBuddy.hi("dummy_field value is '#{value}'")
   end
 end

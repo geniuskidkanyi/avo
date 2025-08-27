@@ -5,17 +5,14 @@ categories:
     labels:
       - 'Feature'
       - 'Feat'
+  - title: '✨ Enhancements'
+    labels:
       - 'Enhancement'
   - title: '🐛 Bug Fixes'
     labels:
       - 'Fix'
       - 'Bugfix'
       - 'Bug'
-  - title: '🤖 Maintenance'
-    labels:
-      - 'Chore'
-      - 'Dependencies'
-      - 'depfu'
   - title: '🧪 Test'
     label: 'Test'
   - title: '✏️ Docs'
@@ -26,10 +23,17 @@ categories:
     label: 'Style'
   - title: '🎡 CI'
     label: 'CI'
-  - title: '⚡️ Perf'
+  - title: '😎 Developer Experience (DX)'
+    label: 'Developer Experience (DX)'
+  - title: '⚡️ Performance'
     labels:
       - 'Perf'
       - 'Performance'
+  - title: '🤖 Maintenance'
+    labels:
+      - 'Chore'
+      - 'Dependencies'
+      - 'depfu'
 change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
 version-resolver:
   major:
@@ -47,8 +51,6 @@ references:
 template: |
   ## Release notes
 
-  More information and release video [here](https://avohq.io/releases/$NEXT_PATCH_VERSION)
+  For more information and the release video check out [the full release page](https://avohq.io/releases/$NEXT_PATCH_VERSION)
 
   $CHANGES
-
-  For more information, check out [Avo's release notes page](https://avohq.io/releases)

@@ -43,11 +43,13 @@ module Avo
       delegate :field, to: :items_holder
       delegate :panel, to: :items_holder
       delegate :row, to: :items_holder
+      delegate :cluster, to: :items_holder
       delegate :tabs, to: :items_holder
       delegate :tool, to: :items_holder
       delegate :heading, to: :items_holder
       delegate :sidebar, to: :items_holder
       delegate :main_panel, to: :items_holder
+      delegate :collaboration_timeline, to: :items_holder
 
       def items_holder
         @items_holder || Avo::Resources::Items::Holder.new
@@ -84,7 +86,14 @@ module Avo
         items.each do |item|
           next if item.nil?
 
-          unless only_root
+          if only_root
+            # When `item.is_main_panel? == true` then also `item.is_panel? == true`
+            # But when only_root == true we want to extract main_panel items
+            # In all other circumstances items will get extracted when checking for `item.is_panel?`
+            if item.is_main_panel?
+              fields << extract_fields(item)
+            end
+          else
             # Dive into panels to fetch their fields
             if item.is_panel?
               fields << extract_fields(item)
@@ -101,13 +110,6 @@ module Avo
             if item.is_sidebar?
               fields << extract_fields(item)
             end
-          else
-            # When `item.is_main_panel? == true` then also `item.is_panel? == true`
-            # But when only_root == true we want to extract main_panel items
-            # In all other circumstances items will get extracted when checking for `item.is_panel?`
-            if item.is_main_panel?
-              fields << extract_fields(item)
-            end
           end
 
           if item.is_field?
@@ -115,7 +117,7 @@ module Avo
           end
 
           if item.is_row?
-            fields << extract_fields(tab)
+            fields << extract_fields(item)
           end
         end
 
@@ -123,8 +125,17 @@ module Avo
       end
 
       def get_field_definitions(only_root: false)
-        only_fields(only_root: only_root).map do |field|
-          field.hydrate(resource: self, user: user, view: view)
+        only_fields(only_root:).map do |field|
+          # When nested field hydrate the field with the nested resource
+          resource = if field.try(:nested_on?, view)
+            Avo.resource_manager.get_resource_by_model_class(model_class.reflections[field.id.to_s].klass)
+              .new(view:, params:)
+              .detect_fields
+          else
+            self
+          end
+
+          field.hydrate(resource:, user:, view:, record: resource.record)
         end
       end
 
@@ -179,11 +190,9 @@ module Avo
         end
 
         # hydrate_fields fields
-        fields.each do |field|
-          field.hydrate(record: @record, view: @view, resource: self)
+        fields.map do |field|
+          field.dup.hydrate(record: @record, view: @view, resource: self)
         end
-
-        fields
       end
 
       def get_field(id)
@@ -274,7 +283,10 @@ module Avo
               item.is_heading? ||
               item.is_a?(Avo::Fields::LocationField)
 
-            item.resource.record.respond_to?("#{item.id}=")
+            # Skip nested fields
+            next true if item.try(:nested_on?, view)
+
+            item.resource.record.respond_to?(:"#{item.try(:for_attribute) || item.id}=")
           end
           .select do |item|
             # Check if the user is authorized to view it.
@@ -310,8 +322,6 @@ module Avo
             item
           elsif extractable_structure?(item)
             extract_fields(item)
-          else
-            nil
           end
         end.compact
       end
@@ -330,8 +340,17 @@ module Avo
       def hydrate_item(item)
         return unless item.respond_to? :hydrate
 
-        res = self.class.ancestors.include?(Avo::BaseResource) ? self : resource
-        item.hydrate(view: view, resource: res)
+        # Use self when this is executed from a resource context, call resource otherwise.
+        the_resource = self.class.ancestors.include?(Avo::Resources::Base) ? self : resource
+
+        if view.form? && item.try(:nested_on?, view)
+          nested_resource = Avo.resource_manager
+            .get_resource_by_model_class(the_resource.model_class.reflections[item.id.to_s].klass)
+            .new(view:)
+            .detect_fields
+        end
+
+        item.hydrate(view:, resource: nested_resource || the_resource)
       end
     end
   end

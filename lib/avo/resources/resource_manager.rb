@@ -34,13 +34,19 @@ module Avo
         #   "FishResource",
         # ]
         def fetch_resources
+          # Mark the BaseResource as abstract so it doesn't get loaded by the resource manager
+          # This is made here instead of in the BaseResource class because BaseResource class can be overridden
+          # And we don't want to force the developer that overrides this class to add the abstract resource flag to the overridden class.
+          Avo::BaseResource.abstract_resource!
+
           if Avo.configuration.resources.present?
             load_configured_resources
           else
             load_resources_namespace
           end
 
-          BaseResource.descendants
+          # All descendants from Avo::Resources::Base except the internal abstract ones
+          Base.descendants.reject { _1.is_abstract? }
         end
 
         def load_resources_namespace
@@ -48,7 +54,7 @@ module Avo
         end
 
         def load_configured_resources
-          raise 'Resources configuration must be an array' unless Avo.configuration.resources.is_a? Array
+          raise "Resources configuration must be an array" unless Avo.configuration.resources.is_a? Array
 
           Avo.configuration.resources.each do |resource|
             resource.to_s.safe_constantize
@@ -101,6 +107,15 @@ module Avo
       end
 
       # Returns the Avo resource by singular snake_cased name
+      #
+      # get_resource_by_name('z posts') => instance of Avo::Resources::ZPost
+      def get_resource_by_plural_name(name)
+        resources.find do |resource|
+          resource.plural_name == name
+        end
+      end
+
+      # Returns the Avo resource by singular snake_cased name
       # From all the resources that use the same model_class, it will fetch the first one in alphabetical order
       #
       # get_resource_by_name('User') => instance of Avo::Resources::User
@@ -148,6 +163,7 @@ module Avo
               user,
               resource.model_class,
               Avo.configuration.authorization_methods.stringify_keys["index"],
+              policy_class: resource.authorization_policy,
               raise_exception: false
             )
           end

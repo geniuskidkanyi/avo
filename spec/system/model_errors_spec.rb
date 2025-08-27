@@ -6,8 +6,6 @@ RSpec.feature "ModelErrors", type: :system do
   around do |example|
     Comment.before_destroy do
       errors.add(:base, "Some Errors")
-
-      throw(:abort)
     end
 
     example.run
@@ -20,7 +18,7 @@ RSpec.feature "ModelErrors", type: :system do
   it "does not swallow errors" do
     visit "/admin/resources/comments/#{comment.id}"
 
-    accept_alert do
+    accept_custom_alert do
       click_on "Delete"
     end
     wait_for_loaded

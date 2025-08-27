@@ -28,30 +28,37 @@ module Avo
         value.utc.iso8601
       end
 
-      def fill_field(model, key, value, params)
+      def fill_field(record, key, value, params)
         if value.in?(["", nil])
-          model[id] = value
+          record.send(:"#{id}=", value)
 
-          return model
+          return record
         end
 
-        return model if value.blank?
+        return record if value.blank?
 
-        model[id] = utc_time(value)
+        record.send(:"#{id}=", utc_time(value))
 
-        model
+        record
       end
 
       def utc_time(value)
-        if timezone.present?
-          ActiveSupport::TimeZone.new(timezone).local_to_utc(Time.parse(value))
+        time = Time.parse(value)
+
+        if timezone.present? && !time.utc?
+          ActiveSupport::TimeZone.new(timezone).local_to_utc(time)
         else
           value
         end
       end
 
       def timezone
-        Avo::ExecutionContext.new(target: @timezone, record: resource.record, resource: resource, view: view).handle
+        timezone = Avo::ExecutionContext.new(target: @timezone, record: resource.record, resource: resource, view: view).handle
+
+        # Fix for https://github.com/moment/luxon/issues/1358#issuecomment-2017477897
+        return "Etc/UTC" if timezone&.downcase == "utc" && view.form?
+
+        timezone
       end
     end
   end

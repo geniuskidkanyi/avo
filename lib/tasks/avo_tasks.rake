@@ -46,7 +46,7 @@ def get_gem_spec(name)
   spec
 end
 
-desc "Finds all Avo gems and outputs theyr paths"
+desc "Finds all Avo gems and outputs their paths"
 task "avo:gem_paths" do
   config = YAML.load_file("../support/gems.yml")
 
@@ -79,11 +79,13 @@ task "avo:sym_link" do
     `touch #{packages_path}/.keep`
   end
 
-  ["avo-advanced", "avo-pro", "avo-dynamic_filters", "avo-dashboards", "avo-menu"].each do |gem|
-    path = `bundle show #{gem} 2> /dev/null`.chomp
+  gem_paths = `bundle list --paths 2>/dev/null`.split("\n")
 
-    # If path is emty we check if package is defined outside of root (on release process it is)
-    if path.empty?
+  ["avo-advanced", "avo-pro", "avo-dynamic_filters", "avo-dashboards", "avo-menu", "avo-kanban"].each do |gem|
+    path = gem_paths.find { |gem_path| gem_path.include?("/#{gem}-") }
+
+    # If path is nil we check if package is defined outside of root (on release process it is)
+    if path.nil?
       next if !Dir.exist?("../#{gem}")
 
       path = File.expand_path("../#{gem}")
@@ -131,6 +133,7 @@ end
 desc "Installs yarn dependencies for Avo"
 task "avo:yarn_install" do
   # tailwind.preset.js needs this dependencies in order to be required
+  # Ensure that versions remain updated and synchronized with those specified in package.json.
   puts "[Avo->] Adding yarn dependencies"
-  `yarn add tailwindcss @tailwindcss/forms @tailwindcss/typography --cwd #{Avo::Engine.root}`
+  `yarn add tailwindcss@^3.4.17 @tailwindcss/forms@^0.5.10 @tailwindcss/typography@^0.5.16 @tailwindcss/container-queries@^0.1.1 --cwd #{Avo::Engine.root}`
 end

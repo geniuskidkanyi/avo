@@ -13,7 +13,7 @@ RSpec.describe "App", type: :feature do
   end
 
   describe "Current.user is set" do
-    it "displayes the current user" do
+    it "displays the current user" do
       visit "/admin/custom_tool"
 
       # Label on the menu builder
@@ -22,7 +22,7 @@ RSpec.describe "App", type: :feature do
   end
 
   describe "callable app_name" do
-    it "displayes the app name with a param" do
+    it "displays the app name with a param" do
       visit "/admin/custom_tool?app_name_suffix=yup"
 
       # Label on the menu builder

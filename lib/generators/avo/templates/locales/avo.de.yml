@@ -1,0 +1,138 @@
+---
+de:
+  avo:
+    action_ran_successfully: Aktion erfolgreich durchgeführt!
+    actions: Aktionen
+    add_filter: Filter hinzufügen
+    and_x_other_resources: und %{count} weitere Ressourcen
+    applied: angewendet
+    are_you_sure: Sind Sie sicher?
+    are_you_sure_detach_item: Sind Sie sicher, dass Sie dieses %{item} abhängen möchten?
+    are_you_sure_you_want_to_run_this_option: Sind Sie sicher, dass Sie diese Aktion ausführen möchten?
+    attach: Anhängen
+    attach_and_attach_another: Anhängen und noch eins anhängen
+    attach_item: "%{item} anhängen"
+    attachment_class_attached: "%{attachment_class} angehängt."
+    attachment_class_detached: "%{attachment_class} abgehängt."
+    attachment_destroyed: Anhang gelöscht
+    attachment_failed: "%{attachment_class} konnte nicht angehängt werden"
+    cancel: Abbrechen
+    choose_a_country: Land auswählen
+    choose_an_option: Option auswählen
+    choose_item: "%{item} auswählen"
+    clear_value: Wert löschen
+    click_to_reveal_filters: Klicken, um Filter anzuzeigen
+    close: Schließen
+    close_modal: Modal schließen
+    confirm: Bestätigen
+    copy: Kopieren
+    create_new_item: Neues %{item} erstellen
+    created_at_timestamp: Erstellt am %{created_at}
+    dashboard: Dashboard
+    dashboards: Dashboards
+    default_scope: Alle
+    delete: löschen
+    delete_file: Datei löschen
+    delete_item: "%{item} löschen"
+    detach_item: "%{item} abhängen"
+    details: Details
+    download: Herunterladen
+    download_file: Datei herunterladen
+    download_item: "%{item} herunterladen"
+    edit: bearbeiten
+    edit_item: "%{item} bearbeiten"
+    empty_dashboard_message: Fügen Sie Karten zu diesem Dashboard hinzu
+    failed: Fehlgeschlagen
+    failed_to_find_attachment: Anhang nicht gefunden
+    failed_to_load: Laden fehlgeschlagen
+    file:
+      one: Datei
+      other: Dateien
+    filter_by: Filtern nach
+    filters: Filter
+    go_back: Zurück
+    grid_view: Rasteransicht
+    hide_content: Inhalt ausblenden
+    home: Startseite
+    key_value_field:
+      add_row: Zeile hinzufügen
+      delete_row: Zeile löschen
+      key: Schlüssel
+      reorder_row: Zeile neu anordnen
+      value: Wert
+    less_content: Weniger Inhalt
+    list_is_empty: Liste ist leer
+    loading: Lade...
+    media_library:
+      title: Medienbibliothek
+    more: Mehr
+    more_content: Mehr Inhalt
+    more_records_available: Es sind weitere Datensätze verfügbar.
+    nested:
+      add_new_item: Neues %{item} hinzufügen
+    new: neu
+    next_page: Nächste Seite
+    no_cancel: Nein, abbrechen
+    no_cards_present: Keine Karten vorhanden
+    no_item_found: Kein Eintrag gefunden
+    no_options_available: Keine Optionen verfügbar
+    no_related_item_found: Kein zugehöriger Eintrag gefunden
+    not_authorized: Sie sind nicht berechtigt, diese Aktion auszuführen.
+    number_of_items:
+      one: ein %{item}
+      other: "%{count} %{item}"
+      zero: keine %{item}
+    oops_nothing_found: Oops! Nichts gefunden...
+    order:
+      higher: Eintrag nach oben verschieben
+      lower: Eintrag nach unten verschieben
+      reorder_record: Eintrag neu anordnen
+      to_bottom: Eintrag ans Ende verschieben
+      to_top: Eintrag an den Anfang verschieben
+    per_page: Pro Seite
+    prev_page: Vorherige Seite
+    records_selected_from_all_pages_html: Alle Einträge von allen Seiten ausgewählt
+    remove_selection: Auswahl aufheben
+    reset: zurücksetzen
+    reset_filters: Filter zurücksetzen
+    resource_created: Eintrag erstellt
+    resource_destroyed: Eintrag gelöscht
+    resource_updated: Eintrag aktualisiert
+    resources: Ressourcen
+    run: Ausführen
+    save: Speichern
+    search:
+      cancel_button: Abbrechen
+      placeholder: Suche
+    select_all: Alle auswählen
+    select_all_matching: Alle übereinstimmenden auswählen
+    select_item: Eintrag auswählen
+    show_content: Inhalt anzeigen
+    sign_out: Abmelden
+    sort_asc: Aufsteigend sortieren
+    sort_desc: Absteigend sortieren
+    sort_reset: Sortierung zurücksetzen
+    switch_to_view: Wechseln zur %{view_type}-Ansicht
+    table_view: Tabellenansicht
+    this_field_has_attachments_disabled: Für dieses Feld sind Anhänge deaktiviert.
+    tools: Werkzeuge
+    type_to_search: Tippen, um zu suchen.
+    unauthorized: Nicht autorisiert
+    undo: Rückgängig machen
+    updated_at_timestamp: Aktualisiert am %{updated_at}
+    view: Anzeigen
+    view_item: "%{item} anzeigen"
+    visit_record_on_external_path: Datensatz über externen Link besuchen
+    was_successfully_created: wurde erfolgreich erstellt
+    was_successfully_updated: wurde erfolgreich aktualisiert
+    x_items_more:
+      one: noch ein Eintrag
+      other: "%{count} weitere Einträge"
+      zero: keine weiteren Einträge
+    x_records_selected_from_a_total_of_x_html: <span class="font-bold text-gray-700">%{selected}</span> Einträge auf dieser Seite von insgesamt <span class="font-bold text-gray-700">%{count}</span> ausgewählt
+    x_records_selected_from_all_pages_html: <span class="font-bold text-gray-700">%{count}</span> Einträge von allen Seiten ausgewählt
+    x_records_selected_from_page_html: <span class="font-bold text-gray-700">%{selected}</span> Einträge auf dieser Seite ausgewählt
+    yes_confirm: Ja, ich bin sicher
+    you_cant_upload_new_resource: Du kannst keine Dateien in den Trix-Editor hochladen, bis die Ressource gespeichert ist.
+    you_havent_set_attachment_key: Du hast keinen `attachment_key` für dieses Trix-Feld festgelegt.
+    you_missed_something_check_form: Sie haben möglicherweise etwas übersehen. Bitte überprüfen Sie das Formular.

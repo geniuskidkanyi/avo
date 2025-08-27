@@ -1,5 +1,7 @@
 class Avo::Actions::Sub::DummyAction < Avo::BaseAction
   self.name = -> { "Dummy action#{arguments[:test_action_name]}" }
+  self.cancel_button_label = -> { arguments[:cancel_button_label] || I18n.t("avo.cancel") }
+  self.confirm_button_label = -> { arguments[:confirm_button_label] || I18n.t("avo.run") }
   self.standalone = true
   # self.turbo = false
   self.visible = -> do
@@ -11,6 +13,8 @@ class Avo::Actions::Sub::DummyAction < Avo::BaseAction
   end
 
   def fields
+    field :size, as: :radio, options: {small: "Small Option", medium: "Medium Option", large: "Large Option"}, default: :medium
+    TestBuddy.hi("Dummy action fields")
     field :keep_modal_open, as: :boolean
     field :persistent_text, as: :text
     field :parent_id,
@@ -25,6 +29,14 @@ class Avo::Actions::Sub::DummyAction < Avo::BaseAction
         # get_type(Avo::App.request.referer) # strip the type from the referer string
         "users"
       end
+
+    field :fun_switch,
+      as: :boolean_group,
+      options: {
+        yes: "Yes",
+        sure: "Sure",
+        why_not: "Why not"
+      }
   end
 
   def handle(**args)
@@ -38,11 +50,13 @@ class Avo::Actions::Sub::DummyAction < Avo::BaseAction
     end
 
     if arguments[:special_message]
-      succeed "I love 🥑"
+      succeed "I love 🥑", timeout: :forever
+    elsif (fun_switch = args[:fields][:fun_switch].reject! { |option| option == "" }).any?
+      succeed "#{fun_switch.map(&:humanize).join(", ")}, I love 🥑", timeout: :forever
     else
-      succeed "Success response ✌️"
+      succeed "Success response ✌️", timeout: :forever
     end
-    warn "Warning response ✌️"
+    warn "Warning response ✌️", timeout: 10000
     inform "Info response ✌️"
     error "Error response ✌️"
 

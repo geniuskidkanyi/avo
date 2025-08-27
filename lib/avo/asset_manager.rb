@@ -2,17 +2,18 @@ module Avo
   class AssetManager
     include ActionView::Helpers::AssetTagHelper
 
-    attr_reader :stylesheets
-    attr_reader :javascripts
+    attr_reader :stimulus_controllers
 
     def initialize
       @stylesheets = []
       @javascripts = []
+      @stimulus_controllers = {}
     end
 
     def reset
       @stylesheets = []
       @javascripts = []
+      @stimulus_controllers = {}
     end
 
     def add_stylesheet(path)
@@ -21,6 +22,18 @@ module Avo
 
     def add_javascript(path)
       @javascripts.push path
+    end
+
+    def register_stimulus_controller(name, controller)
+      @stimulus_controllers[name] = controller
+    end
+
+    def stylesheets
+      @stylesheets.uniq
+    end
+
+    def javascripts
+      @javascripts.uniq
     end
   end
 

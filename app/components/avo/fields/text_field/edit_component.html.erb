@@ -1,4 +1,4 @@
-<%= field_wrapper **field_wrapper_args do %>
+<%= field_wrapper(**field_wrapper_args) do %>
   <%= form.text_field @field.id,
     value: @field.value,
     class: classes("w-full"),
@@ -7,6 +7,7 @@
     placeholder: @field.placeholder,
     style: @field.get_html(:style, view: view, element: :input),
     multiple: multiple,
-    autocomplete: @field.autocomplete
+    autocomplete: @field.autocomplete,
+    autofocus: @autofocus
   %>
 <% end %>

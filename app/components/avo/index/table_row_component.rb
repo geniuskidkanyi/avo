@@ -2,13 +2,31 @@
 
 class Avo::Index::TableRowComponent < Avo::BaseComponent
   include Avo::ResourcesHelper
-  include Avo::Concerns::CanReorderItems
+  include Avo::Concerns::ChecksShowAuthorization
 
-  def initialize(resource: nil, reflection: nil, parent_record: nil, parent_resource: nil, actions: nil)
-    @resource = resource
-    @reflection = reflection
-    @parent_record = parent_record
-    @parent_resource = parent_resource
-    @actions = actions
+  attr_writer :header_fields
+
+  prop :resource, reader: :public
+  prop :reflection
+  prop :parent_record
+  prop :parent_resource
+  prop :actions
+  prop :fields
+  prop :header_fields
+  prop :index
+
+  def resource_controls_component
+    Avo::Index::ResourceControlsComponent.new(
+      resource: @resource,
+      reflection: @reflection,
+      parent_record: @parent_record,
+      parent_resource: @parent_resource,
+      view_type: :table,
+      actions: @actions
+    )
+  end
+
+  def click_row_to_view_record
+    Avo.configuration.click_row_to_view_record && can_view?
   end
 end

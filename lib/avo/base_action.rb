@@ -2,6 +2,11 @@ module Avo
   class BaseAction
     include Avo::Concerns::HasItems
     include Avo::Concerns::HasActionStimulusControllers
+    include Avo::Concerns::Hydration
+
+    unless defined?(DATA_ATTRIBUTES)
+      DATA_ATTRIBUTES = {turbo_frame: Avo::MODAL_FRAME_ID}
+    end
 
     class_attribute :name, default: nil
     class_attribute :message
@@ -9,10 +14,17 @@ module Avo
     class_attribute :cancel_button_label
     class_attribute :no_confirmation, default: false
     class_attribute :standalone, default: false
-    class_attribute :visible
+    class_attribute :visible, default: -> {
+      # Hide on the :new view by default
+      return false if view.new?
+
+      # Show on all other views
+      true
+    }
     class_attribute :may_download_file
     class_attribute :turbo
     class_attribute :authorize, default: true
+    class_attribute :close_modal_on_backdrop_click, default: true
 
     attr_accessor :view
     attr_accessor :response
@@ -20,6 +32,10 @@ module Avo
     attr_accessor :resource
     attr_accessor :user
     attr_reader :arguments
+    attr_reader :icon
+    attr_reader :appended_turbo_streams
+    attr_reader :records_to_reload
+    attr_reader :query
 
     # TODO: find a differnet way to delegate this to the uninitialized Current variable
     delegate :context, to: Avo::Current
@@ -31,6 +47,7 @@ module Avo
     delegate :avo, to: :view_context
     delegate :main_app, to: :view_context
     delegate :to_param, to: :class
+    delegate :link_arguments, to: :class
 
     class << self
       delegate :context, to: ::Avo::Current
@@ -46,23 +63,22 @@ module Avo
         to_s
       end
 
-      def link_arguments(resource:, arguments: {}, **args)
-        path = Avo::Services::URIService.parse(resource.record&.persisted? ? resource.record_path : resource.records_path)
+      def path(resource:, arguments: {}, **args)
+        Avo::Services::URIService.parse(resource.record&.to_param.present? ? resource.record_path : resource.records_path)
           .append_paths("actions")
           .append_query(
             **{
               action_id: to_param,
               arguments: encode_arguments(arguments),
+              view_type: resource.view_type,
               **args
             }.compact
           )
           .to_s
+      end
 
-        data = {
-          turbo_frame: Avo::ACTIONS_TURBO_FRAME_ID,
-        }
-
-        [path, data]
+      def link_arguments(resource:, arguments: {}, **args)
+        [path(resource:, arguments:, **args), DATA_ATTRIBUTES]
       end
 
       # Encrypt the arguments so we can pass sensible data as a query param.
@@ -94,30 +110,32 @@ module Avo
           resource: @resource,
           record: @record,
           view: @view,
-          arguments: @arguments
+          arguments: @arguments,
+          query: @query
         ).handle
       end
 
       self.class.to_s.demodulize.underscore.humanize(keep_id_suffix: true)
     end
 
-    def initialize(record: nil, resource: nil, user: nil, view: nil, arguments: {})
+    def initialize(record: nil, resource: nil, user: nil, view: nil, arguments: {}, icon: :play, query: nil, index_query: nil)
       @record = record
       @resource = resource
       @user = user
       @view = Avo::ViewInquirer.new(view)
+      @icon = icon
       @arguments = Avo::ExecutionContext.new(
         target: arguments,
         resource: resource,
         record: record
       ).handle.with_indifferent_access
-
+      @query = query
+      @index_query = index_query
       self.class.message ||= I18n.t("avo.are_you_sure_you_want_to_run_this_option")
       self.class.confirm_button_label ||= I18n.t("avo.run")
       self.class.cancel_button_label ||= I18n.t("avo.cancel")
 
       self.items_holder = Avo::Resources::Items::Holder.new
-      fields
 
       @response ||= {}
       @response[:messages] = []
@@ -137,7 +155,30 @@ module Avo
         resource: @resource,
         record: @record,
         view: @view,
-        arguments: @arguments
+        arguments: @arguments,
+        query: @query
+      ).handle
+    end
+
+    def cancel_button_label
+      Avo::ExecutionContext.new(
+        target: self.class.cancel_button_label,
+        resource: @resource,
+        record: @record,
+        view: @view,
+        arguments: @arguments,
+        query: @query
+      ).handle
+    end
+
+    def confirm_button_label
+      Avo::ExecutionContext.new(
+        target: self.class.confirm_button_label,
+        resource: @resource,
+        record: @record,
+        view: @view,
+        arguments: @arguments,
+        query: @query
       ).handle
     end
 
@@ -179,17 +220,6 @@ module Avo
     end
 
     def visible_in_view(parent_resource: nil)
-      return false unless authorized?
-
-      if visible.blank?
-        # Hide on the :new view by default
-        return false if view.new?
-
-        # Show on all other views
-        return true
-      end
-
-      # Run the visible block if available
       Avo::ExecutionContext.new(
         target: visible,
         params: params,
@@ -197,29 +227,29 @@ module Avo
         resource: @resource,
         view: @view,
         arguments: arguments
-      ).handle
+      ).handle && authorized?
     end
 
-    def succeed(text)
-      add_message text, :success
+    def succeed(text, timeout: nil)
+      add_message text, :success, timeout: timeout
 
       self
     end
 
-    def error(text)
-      add_message text, :error
+    def error(text, timeout: nil)
+      add_message text, :error, timeout: timeout
 
       self
     end
 
-    def inform(text)
-      add_message text, :info
+    def inform(text, timeout: nil)
+      add_message text, :info, timeout: timeout
 
       self
     end
 
-    def warn(text)
-      add_message text, :warning
+    def warn(text, timeout: nil)
+      add_message text, :warning, timeout: timeout
 
       self
     end
@@ -235,6 +265,9 @@ module Avo
 
       self
     end
+
+    # def do_nothing
+    alias_method :do_nothing, :close_modal
 
     # Add a placeholder silent message from when a user wants to do a redirect action or something similar
     def silent
@@ -260,6 +293,24 @@ module Avo
 
       self
     end
+
+    def reload_record(records)
+      # Force close modal to avoid default redirect to
+      # Redirect is 100% not wanted when using reload_record
+      close_modal
+
+      @records_to_reload = Array(records)
+
+      case @resource.view_type.to_sym
+      when :table, :map
+        reload_row_items
+      when :grid
+        reload_grid_items
+      end
+    end
+
+    # def reload_records
+    alias_method :reload_records, :reload_record
 
     def navigate_to_action(action, **kwargs)
       response[:type] = :navigate_to_action
@@ -287,12 +338,81 @@ module Avo
       ).handle
     end
 
+    def append_to_response(turbo_stream)
+      @appended_turbo_streams = turbo_stream
+    end
+
+    def enabled?
+      self.class.standalone || @record&.to_param.present?
+    end
+
+    def disabled?
+      !enabled?
+    end
+
+    def no_confirmation?
+      Avo::ExecutionContext.new(
+        target: no_confirmation,
+        action: self,
+        resource: @resource,
+        view: @view,
+        arguments:
+      ).handle
+    end
+
     private
 
-    def add_message(body, type = :info)
+    def add_message(body, type = :info, timeout: nil)
       response[:messages] << {
         type: type,
-        body: body
+        body: body&.truncate(320),
+        timeout: timeout
+      }
+    end
+
+    def reload_row_items
+      append_to_response -> {
+        table_row_components = []
+        header_fields = []
+        component_to_replace = @resource.resolve_component(Avo::Index::TableRowComponent)
+
+        @action.records_to_reload.each do |record|
+          resource = @resource.dup
+          resource.hydrate(record:, view: :index)
+          resource.detect_fields
+          row_fields = resource.get_fields(only_root: true)
+          header_fields.concat row_fields
+          table_row_components << component_to_replace.new(
+            resource: resource,
+            header_fields: row_fields.map(&:table_header_label),
+            fields: row_fields
+          )
+        end
+
+        header_fields.uniq!(&:table_header_label)
+
+        header_fields_ids = header_fields.map(&:table_header_label)
+
+        table_row_components.map.with_index do |table_row_component, index|
+          table_row_component.header_fields = header_fields_ids
+          turbo_stream.replace(
+            "#{component_to_replace.name.underscore}_#{@action.records_to_reload[index].to_param}",
+            table_row_component
+          )
+        end
+      }
+    end
+
+    def reload_grid_items
+      append_to_response -> {
+        component_to_replace = @resource.resolve_component(Avo::Index::GridItemComponent)
+
+        @action.records_to_reload.map do |record|
+          turbo_stream.replace(
+            "#{component_to_replace.name.underscore}_#{record.to_param}",
+            component_to_replace.new(resource: @resource.dup.hydrate(record:, view: :index))
+          )
+        end
       }
     end
   end

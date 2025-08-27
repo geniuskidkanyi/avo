@@ -1,46 +1,40 @@
 # frozen_string_literal: true
 
 # A button/link can have the following settings:
-# style: primary/outline/text
-# size: :xs :sm, :md, :lg
-class Avo::ButtonComponent < ViewComponent::Base
-  def initialize(path = nil, size: :md, style: :outline, color: :gray, icon: nil, icon_class: "", is_link: false, rounded: true, compact: false, **args)
-    # Main settings
-    @size = size
-    @style = style
-    @color = color
-
-    # Other things that appear in the button
-    @path = path
-    @icon = icon
-    @icon_class = icon_class
-    @rounded = rounded
-    @compact = compact
-
-    # Other settings
-    @class = args[:class]
-    @is_link = is_link
-    @args = args || {}
+# style: primary/outline/text/icon
+# size: :xs :sm, :md, :lg, :xl
+# color: :gray, :red, :green, :blue, or any other tailwind color
+# icon: "heroicons/outline/paperclip" as specified in the docs (https://docs.avohq.io/3.0/icons.html)
+class Avo::ButtonComponent < Avo::BaseComponent
+  prop :path, kind: :positional
+  prop :size, default: :md
+  prop :style, default: :outline
+  prop :color, default: :gray
+  prop :icon do |value|
+    value&.to_sym
   end
+  prop :icon_class, default: ""
+  prop :is_link, default: false
+  prop :rounded, default: true
+  prop :compact, default: false
+  prop :aria, default: {}.freeze
+  prop :args, kind: :**, default: {}.freeze
+  prop :class
 
   def args
     if @args[:loading]
       @args[:"data-controller"] = "loading-button"
-      @args[:"data-loading-button-confirmed-value"] = false
       @args[:"data-action"] = "click->loading-button#attemptSubmit"
-
-      if @args[:confirm]
-        @args[:"data-loading-button-confirmation-message-value"] = @args.delete(:confirm)
-      end
     end
 
     @args[:class] = button_classes
+    @args[:aria] = @aria
 
     @args
   end
 
   def button_classes
-    classes = "button-component inline-flex flex-grow-0 items-center font-semibold leading-6 fill-current whitespace-nowrap transition duration-100 transform transition duration-100 cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 justify-center #{@class}"
+    classes = "button-component inline-flex flex-grow-0 items-center font-semibold leading-6 fill-current whitespace-nowrap transition duration-100 transform transition duration-100 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 data-[disabled='true']:opacity-60 justify-center #{@class}"
 
     # For non-icon-styled buttons we should not add borders.
     classes += " border active:outline active:outline-1" unless is_icon?
@@ -68,11 +62,9 @@ class Avo::ButtonComponent < ViewComponent::Base
 
   def full_content
     result = ""
-    icon_classes = @icon_class
     # space out the icon from the text if text is present
-    icon_classes += " mr-1" if content.present? && is_not_icon?
     # add the icon height
-    icon_classes += icon_size_classes
+    icon_classes = class_names(@icon_class, "pointer-events-none", icon_size_classes, "mr-1": content.present? && is_not_icon?)
 
     # Add the icon
     result += helpers.svg(@icon, class: icon_classes) if @icon.present?

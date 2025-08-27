@@ -6,17 +6,21 @@ class Avo::Resources::Team < Avo::BaseResource
   self.grid_view = {
     card: -> do
       {
-        cover_url: record.url.present? ? "//logo.clearbit.com/#{URI.parse(record.url).host}?size=180" : nil,
+        cover_url: record.url.present? ? "//img.logo.dev/#{URI.parse(record.url).host}?size=180&token=pk_CyYjya8hRsWjO7C7osDMfw" : nil,
         title: record.name,
         body: record.url
       }
     end
   }
 
-  def fields
-    field :preview, as: :preview
+  self.row_controls_config = {
+    show_on_hover: true
+  }
 
+  def fields
     main_panel do
+      field :preview, as: :preview
+
       unless params[:hide_id]
         field :id, as: :id, filterable: true
       end
@@ -31,9 +35,9 @@ class Avo::Resources::Team < Avo::BaseResource
           end
         end
       end
-      field :logo, as: :external_image, hide_on: :show, as_avatar: :rounded do
+      field :logo, as: :external_image, hide_on: :show do
         if record&.url
-          "//logo.clearbit.com/#{URI.parse(record.url).host}?size=180"
+          "//img.logo.dev/#{URI.parse(record.url).host}?size=180&token=pk_CyYjya8hRsWjO7C7osDMfw"
         end
       rescue
         "nope"
@@ -60,9 +64,9 @@ class Avo::Resources::Team < Avo::BaseResource
       sidebar do
         field :url, as: :text
         field :created_at, as: :date_time, hide_on: :forms
-        field :logo, as: :external_image, as_avatar: :rounded do
+        field :logo, as: :external_image do
           if record&.url
-            "//logo.clearbit.com/#{URI.parse(record.url).host}?size=180"
+            "//img.logo.dev/#{URI.parse(record.url).host}?size=180&token=pk_CyYjya8hRsWjO7C7osDMfw"
           end
         end
       end
@@ -72,12 +76,18 @@ class Avo::Resources::Team < Avo::BaseResource
       as: :has_many,
       searchable: true,
       filterable: true,
+      linkable: true,
+      reloadable: true,
       attach_scope: -> do
         query.where.not(user_id: parent.id).or(query.where(user_id: nil))
       end
 
-    field :admin, as: :has_one
-    field :team_members, as: :has_many, through: :memberships, translation_key: "avo.resource_translations.team_members"
+    field :admin, as: :has_one, linkable: true
+    field :team_members,
+      as: :has_many,
+      through: :memberships,
+      linkable: true,
+      reloadable: true
     field :reviews, as: :has_many,
       reloadable: -> {
         current_user.is_admin?

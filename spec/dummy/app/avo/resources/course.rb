@@ -1,14 +1,23 @@
 class Avo::Resources::Course < Avo::BaseResource
   self.search = {
-    query: -> { query.ransack(id_eq: params[:q], name_cont: params[:q], m: "or").result(distinct: false) }
+    query: -> {
+      TestBuddy.hi("params[:q]: '#{params[:q]}', q: '#{q}'") if Rails.env.test?
+      query
+        .where("name ILIKE ?", "%#{q}%")
+        .or(query.where(id: q))
+    }
   }
   self.keep_filters_panel_open = true
   self.stimulus_controllers = "city-in-country toggle-fields"
+  # self.default_sort_column = :country
+  self.translation_key = "test.translation_key.course"
 
   def show_fields
     fields_bag
     field :links, as: :has_many, searchable: true, placeholder: "Click to choose a link",
       discreet_pagination: true
+
+    field :attendees, as: :array
   end
 
   def index_fields
@@ -50,6 +59,18 @@ class Avo::Resources::Course < Avo::BaseResource
           end
         end
       end
+
+      # field :skills,
+      #   as: :tags,
+      #   fetch_values_from: "/admin/resources/users/get_users?hey=you&record_id=1", # {value: 1, label: "Jose"}
+      #   format_using: -> {
+      #     User.find(value).map do |user|
+      #       {
+      #         value: user.id,
+      #         label: user.name
+      #       }
+      #     end
+      #   }
 
       field :skills,
         as: :tags,
@@ -108,6 +129,7 @@ class Avo::Resources::Course < Avo::BaseResource
   def filters
     filter Avo::Filters::CourseCountryFilter
     filter Avo::Filters::CourseCityFilter
+    filter Avo::Filters::StartingAt
   end
 
   def actions

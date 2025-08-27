@@ -1,27 +1,45 @@
 # frozen_string_literal: true
 
 class Avo::TabGroupComponent < Avo::BaseComponent
-  attr_reader :group
-  attr_reader :index
-  attr_reader :view
-  attr_reader :form
-  attr_reader :resource
-
   delegate :group_param, to: :@group
 
-  def initialize(resource:, group:, index:, form:, params:, view:)
-    @resource = resource
-    @group = group
-    @index = index
-    @form = form
-    @params = params
-    @view = view
+  prop :resource, reader: :public
+  prop :group, reader: :public
+  prop :index, reader: :public
+  prop :form, reader: :public
+  prop :params, reader: :public
+  prop :view, reader: :public
 
-    @group.index = index
+  def after_initialize
+    group.index = index
   end
 
   def render?
     tabs_have_content? && visible_tabs.present?
+  end
+
+  def frame_args(tab)
+    args = {
+      target: :_top,
+      class: "block"
+    }
+
+    if is_not_loaded?(tab)
+      args[:loading] = :lazy
+      args[:src] = helpers.resource_path(
+        resource: @resource,
+        record: @resource.record,
+        keep_query_params: true,
+        active_tab_name: tab.name,
+        tab_turbo_frame: tab.turbo_frame_id(parent: @group)
+      )
+    end
+
+    args
+  end
+
+  def is_not_loaded?(tab)
+    params[:tab_turbo_frame] != tab.turbo_frame_id(parent: @group)
   end
 
   def tabs_have_content?

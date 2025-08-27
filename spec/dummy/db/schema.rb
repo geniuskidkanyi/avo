@@ -10,9 +10,9 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2023_12_12_231204) do
+ActiveRecord::Schema[8.0].define(version: 2025_06_19_140631) do
   # These are extensions that must be enabled in order to support this database
-  enable_extension "plpgsql"
+  enable_extension "pg_catalog.plpgsql"
 
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.string "name", null: false
@@ -114,7 +114,9 @@ ActiveRecord::Schema[7.1].define(version: 2023_12_12_231204) do
     t.datetime "updated_at", null: false
     t.text "body"
     t.bigint "location_id"
+    t.uuid "uuid"
     t.index ["location_id"], name: "index_events_on_location_id"
+    t.index ["uuid"], name: "index_events_on_uuid", unique: true
   end
 
   create_table "fish", force: :cascade do |t|
@@ -123,6 +125,7 @@ ActiveRecord::Schema[7.1].define(version: 2023_12_12_231204) do
     t.datetime "updated_at", null: false
     t.string "type"
     t.bigint "user_id"
+    t.string "size"
     t.index ["user_id"], name: "index_fish_on_user_id"
   end
 
@@ -166,11 +169,13 @@ ActiveRecord::Schema[7.1].define(version: 2023_12_12_231204) do
   create_table "products", force: :cascade do |t|
     t.string "title"
     t.text "description"
-    t.integer "price"
     t.string "status"
     t.string "category"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "price_cents", default: 0, null: false
+    t.string "price_currency", default: "USD", null: false
+    t.string "sizes", default: [], array: true
   end
 
   create_table "projects", force: :cascade do |t|
@@ -205,6 +210,14 @@ ActiveRecord::Schema[7.1].define(version: 2023_12_12_231204) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["user_id"], name: "index_reviews_on_user_id"
+  end
+
+  create_table "store_patrons", force: :cascade do |t|
+    t.integer "store_id"
+    t.integer "user_id"
+    t.string "review"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "stores", force: :cascade do |t|
@@ -284,6 +297,17 @@ ActiveRecord::Schema[7.1].define(version: 2023_12_12_231204) do
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["slug"], name: "index_users_on_slug", unique: true
     t.index ["team_id"], name: "index_users_on_team_id"
+  end
+
+  create_table "volunteers", force: :cascade do |t|
+    t.string "name"
+    t.string "role"
+    t.uuid "event_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "department"
+    t.string "skills", default: [], array: true
+    t.index ["event_id"], name: "index_volunteers_on_event_id"
   end
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"

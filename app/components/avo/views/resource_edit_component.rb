@@ -3,13 +3,13 @@
 class Avo::Views::ResourceEditComponent < Avo::ResourceComponent
   include Avo::ApplicationHelper
 
-  attr_reader :actions, :display_breadcrumbs
+  prop :resource
+  prop :record
+  prop :actions, default: [].freeze
+  prop :view, default: Avo::ViewInquirer.new(:edit).freeze
+  prop :display_breadcrumbs, default: true, reader: :public
 
-  def initialize(resource: nil, record: nil, actions: [], view: "edit", display_breadcrumbs: true)
-    @resource = resource
-    @record = record
-    @actions = actions
-    @view = Avo::ViewInquirer.new(view)
+  def after_initialize
     @display_breadcrumbs = @reflection.blank? && display_breadcrumbs
   end
 
@@ -18,19 +18,21 @@ class Avo::Views::ResourceEditComponent < Avo::ResourceComponent
   end
 
   def back_path
-    return if via_belongs_to?
+    # The `return_to` param takes precedence over anything else.
+    return params[:return_to] if params[:return_to].present?
+
     return resource_view_path if via_resource?
     return resources_path if via_index?
 
     if is_edit? && Avo.configuration.resource_default_view.show? # via resource show or edit page
-      return helpers.resource_path(record: @resource.record, resource: @resource)
+      return helpers.resource_path(record: @resource.record, resource: @resource, **keep_referrer_params)
     end
 
     resources_path
   end
 
   def resources_path
-    helpers.resources_path(resource: @resource)
+    helpers.resources_path(resource: @resource, **keep_referrer_params)
   end
 
   def resource_view_path
@@ -53,23 +55,14 @@ class Avo::Views::ResourceEditComponent < Avo::ResourceComponent
     @resource.render_edit_controls
   end
 
-  # Render :show view for read only trix fields
-  def view_for(field)
-    field.is_a?(Avo::Fields::TrixField) && field.is_disabled? ? :show : view
-  end
-
   private
 
   def via_index?
     params[:via_view] == "index"
   end
 
-  def via_belongs_to?
-    params[:via_belongs_to_resource_class].present?
-  end
-
   def is_edit?
-    view.in?(%w[edit update])
+    @view.in?(%w[edit update])
   end
 
   def form_method

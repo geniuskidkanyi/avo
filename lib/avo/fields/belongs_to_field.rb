@@ -63,11 +63,12 @@ module Avo
       attr_accessor :target
 
       attr_reader :polymorphic_as
-      attr_reader :relation_method
       attr_reader :types # for Polymorphic associations
       attr_reader :allow_via_detaching
       attr_reader :attach_scope
       attr_reader :polymorphic_help
+      attr_reader :link_to_record
+      attr_reader :link_to_child_resource
 
       def initialize(id, **args, &block)
         args[:placeholder] ||= I18n.t("avo.choose_an_option")
@@ -77,22 +78,24 @@ module Avo
         @searchable = args[:searchable] == true
         @polymorphic_as = args[:polymorphic_as]
         @types = args[:types]
-        @relation_method = id.to_s.parameterize.underscore
+        @relation_method = attribute_id.to_s.parameterize.underscore
         @allow_via_detaching = args[:allow_via_detaching] == true
         @attach_scope = args[:attach_scope]
         @polymorphic_help = args[:polymorphic_help]
         @target = args[:target]
         @use_resource = args[:use_resource] || nil
         @can_create = args[:can_create].nil? ? true : args[:can_create]
+        @link_to_record = args[:link_to_record].present? ? args[:link_to_record] : false
+        @link_to_child_resource = args[:link_to_child_resource]
       end
 
       def value
         if is_polymorphic?
-          # Get the value from the pre-filled assoociation record
+          # Get the value from the pre-filled association record
           super(polymorphic_as)
         else
-          # Get the value from the pre-filled assoociation record
-          super(relation_method)
+          # Get the value from the pre-filled association record
+          super(@relation_method)
         end
       end
 
@@ -122,8 +125,10 @@ module Avo
           query = Avo::ExecutionContext.new(target: attach_scope, query: query, parent: get_record).handle
         end
 
-        query.all.map do |record|
-          [resource.new(record: record).record_title, record.id]
+        query.all.limit(Avo.configuration.associations_lookup_list_limit).map do |record|
+          [resource.new(record: record).record_title, record.to_param]
+        end.tap do |options|
+          options << t("avo.more_records_available") if options.size == Avo.configuration.associations_lookup_list_limit
         end
       end
 
@@ -154,9 +159,9 @@ module Avo
       end
 
       def foreign_key
-        return polymorphic_as if polymorphic_as.present?
-
-        if @record.present?
+        @foreign_key ||= if polymorphic_as.present?
+          polymorphic_as
+        elsif @record.present?
           get_model_class(@record).reflections[@relation_method].foreign_key
         elsif @resource.present? && @resource.model_class.reflections[@relation_method].present?
           @resource.model_class.reflections[@relation_method].foreign_key
@@ -171,7 +176,7 @@ module Avo
 
       # Get the model reflection instance
       def reflection
-        reflection_for_key(id)
+        reflection_for_key(attribute_id)
       rescue
         nil
       end
@@ -187,31 +192,37 @@ module Avo
 
       def to_permitted_param
         if polymorphic_as.present?
-          return ["#{polymorphic_as}_type".to_sym, "#{polymorphic_as}_id".to_sym]
+          return [:"#{polymorphic_as}_type", :"#{polymorphic_as}_id"]
         end
 
         foreign_key.to_sym
       end
 
-      def fill_field(model, key, value, params)
-        return model unless model.methods.include? key.to_sym
+      def fill_field(record, key, value, params)
+        return record unless record.methods.include? key.to_sym
 
         if polymorphic_as.present?
-          valid_model_class = valid_polymorphic_class params["#{polymorphic_as}_type"]
+          valid_model_class = valid_polymorphic_class params[:"#{polymorphic_as}_type"]
 
-          model.send("#{polymorphic_as}_type=", valid_model_class)
+          record.send(:"#{polymorphic_as}_type=", valid_model_class)
 
           # If the type is blank, reset the id too.
-          if valid_model_class.blank?
-            model.send("#{polymorphic_as}_id=", nil)
+          id_from_param = params["#{polymorphic_as}_id"]
+
+          if valid_model_class.blank? || id_from_param.blank?
+            record.send(:"#{polymorphic_as}_id=", nil)
           else
-            model.send("#{polymorphic_as}_id=", params["#{polymorphic_as}_id"])
+            record_id = target_resource(record:, polymorphic_model_class: value.safe_constantize).find_record(id_from_param).id
+
+            record.send(:"#{polymorphic_as}_id=", record_id)
           end
         else
-          model.send("#{key}=", value)
+          record_id = value.blank? ? value : target_resource(record:).find_record(value).send(reflection.association_primary_key)
+
+          record.send(:"#{key}=", record_id)
         end
 
-        model
+        record
       end
 
       def valid_polymorphic_class(possible_class)
@@ -222,32 +233,36 @@ module Avo
 
       def database_id
         # If the field is a polymorphic value, return the polymorphic_type as key and pre-fill the _id in fill_field.
-        return "#{polymorphic_as}_type" if polymorphic_as.present?
+        return :"#{polymorphic_as}_type" if polymorphic_as.present?
 
         foreign_key
       rescue
-        id
+        attribute_id
       end
 
-      def target_resource
-        return use_resource if use_resource.present?
-
-        if is_polymorphic?
-          if value.present?
-            return get_resource_by_model_class(value.class)
+      def target_resource(record: @record, polymorphic_model_class: value&.class)
+        @target_resource ||= if use_resource.present?
+          use_resource
+        elsif is_polymorphic?
+          if polymorphic_model_class.present?
+            get_resource_by_model_class(polymorphic_model_class)
           else
             return nil
           end
-        end
-
-        reflection_key = polymorphic_as || id
-
-        if @record._reflections[reflection_key.to_s].klass.present?
-          get_resource_by_model_class(@record._reflections[reflection_key.to_s].klass.to_s)
-        elsif @record._reflections[reflection_key.to_s].options[:class_name].present?
-          get_resource_by_model_class(@record._reflections[reflection_key.to_s].options[:class_name])
         else
-          App.get_resource_by_name reflection_key.to_s
+          reflection_key = polymorphic_as || attribute_id
+
+          reflection_object = record.class.reflect_on_association(reflection_key)
+
+          if (link_to_child_resource || @resource&.link_to_child_resource) && value.present?
+            get_resource_by_model_class(value.class.to_s)
+          elsif reflection_object.klass.present?
+            get_resource_by_model_class(reflection_object.klass.to_s)
+          elsif reflection_object.options[:class_name].present?
+            get_resource_by_model_class(reflection_object.options[:class_name])
+          else
+            App.get_resource_by_name reflection_key
+          end
         end
       end
 
@@ -261,8 +276,36 @@ module Avo
         super
       end
 
-      def can_create?
-        @can_create
+      def index_link_to_resource
+        if @link_to_record.present?
+          @resource
+        else
+          target_resource
+        end
+      end
+
+      def index_link_to_record
+        if @link_to_record.present?
+          get_record
+        else
+          value
+        end
+      end
+
+      # field :user, as: :belongs_to, can_create: true
+      # Only can create when:
+      #   - `can_create: true` option is present
+      #   - target resource's policy allow creation (UserPolicy in this example)
+      def can_create?(final_target_resource = target_resource)
+        @can_create && final_target_resource.authorization.authorize_action(:create, raise_exception: false)
+      end
+
+      def form_field_label
+        "#{id}_id"
+      end
+
+      def polymorphic_form_field_label
+        "#{id}_type"
       end
 
       private

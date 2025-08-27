@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Avo::Fields::EditComponent < ViewComponent::Base
+class Avo::Fields::EditComponent < Avo::BaseComponent
   include Avo::ResourcesHelper
 
   attr_reader :compact
@@ -13,7 +13,7 @@ class Avo::Fields::EditComponent < ViewComponent::Base
   attr_reader :stacked
   attr_reader :view
 
-  def initialize(field: nil, resource: nil, index: 0, form: nil, compact: false, stacked: nil, multiple: false, **kwargs)
+  def initialize(field: nil, resource: nil, index: 0, form: nil, compact: false, stacked: nil, multiple: false, autofocus: false, **kwargs)
     @compact = compact
     @field = field
     @form = form
@@ -23,6 +23,7 @@ class Avo::Fields::EditComponent < ViewComponent::Base
     @resource = resource
     @stacked = stacked
     @view = Avo::ViewInquirer.new("edit")
+    @autofocus = autofocus
   end
 
   def classes(extra_classes = "")

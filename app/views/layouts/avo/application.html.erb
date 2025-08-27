@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- ✨ Built with Avo • https://www.avohq.io/ -->
-<html>
+<html lang="<%= I18n.default_locale %>">
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <% if !Avo.configuration.turbo[:instant_click] %>
@@ -9,29 +9,28 @@
     <%= display_meta_tags site: Avo.configuration.app_name, reverse: true, separator: "—" %>
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
-    <%= render partial: 'avo/partials/javascript' %>
-    <%= render partial: 'avo/partials/branding' %>
-    <%= render partial: 'avo/partials/pre_head' %>
+    <%= render partial: "avo/partials/javascript" %>
+    <%= render partial: "avo/partials/branding" %>
+    <%= render partial: "avo/partials/pre_head" %>
     <%= render Avo::AssetManager::StylesheetComponent.new asset_manager: Avo.asset_manager %>
-    <%= stylesheet_link_tag @stylesheet_assets_path, "data-turbo-track": "reload", defer: true %>
-    <% if Avo::PACKED %>
-      <%= javascript_include_tag "/avo-assets/avo.base", "data-turbo-track": "reload", defer: true %>
-    <% else %>
-      <%= javascript_include_tag "avo.base", "data-turbo-track": "reload", defer: true %>
-      <% if Rails.env.development? %>
-        <%= javascript_include_tag "hotwire-livereload", defer: true %>
-      <% end %>
+    <%= stylesheet_link_tag @stylesheet_assets_path, "data-turbo-track": "reload", as: "style" %>
+
+    <% path = Avo::PACKED ? "/avo-assets/avo.base" : "avo.base" %>
+    <%= javascript_include_tag path, "data-turbo-track": "reload", defer: true %>
+
+    <% if !Avo::PACKED && defined?(Hotwire::Livereload) %>
+      <%= javascript_include_tag "hotwire-livereload", defer: true %>
     <% end %>
+
     <%= render Avo::AssetManager::JavascriptComponent.new asset_manager: Avo.asset_manager %>
-    <%= render partial: 'avo/partials/head' %>
-    <%= turbo_refreshes_with method: :replace, scroll: :reset %>
+    <%= render partial: "avo/partials/head" %>
     <%= content_for :head %>
   </head>
-  <body class="bg-application os-mac">
+  <body class="bg-application os-mac floating-controls">
     <div class="relative flex flex-1 w-full min-h-full" data-controller="sidebar" data-sidebar-open-value="<%= @sidebar_open %>">
       <div class="flex-1 flex flex-col max-w-full">
-        <%= render partial: "avo/partials/navbar" %>
-        <div data-sidebar-target="mainArea" class="content-area flex-1 flex pt-16 relative <%= 'sidebar-open' if @sidebar_open %>">
+        <%= render partial: "avo/partials/navbar", locals: { resource: @resource } %>
+        <div data-sidebar-target="mainArea" class="content-area flex-1 flex pt-16 relative <%= "sidebar-open" if @sidebar_open %>">
           <div class="hidden lg:flex">
             <%= render Avo::SidebarComponent.new sidebar_open: @sidebar_open %>
           </div>
@@ -39,10 +38,10 @@
             <%= render Avo::SidebarComponent.new sidebar_open: false, for_mobile: true %>
           </div>
           <div class="main-content-area flex-1 flex flex-col min-h-full max-w-full">
-            <div class="content p-4 lg:p-6 flex-1 flex flex-col justify-between items-stretch <%= @container_classes %>">
+            <div class="content p-4 lg:p-6 flex-1 flex flex-col justify-between items-stretch <%= container_classes %>">
               <%= render partial: "avo/partials/custom_tools_alert" %>
               <div class="flex flex-1 flex-col justify-between items-stretch space-y-8">
-                <%= yield.force_encoding('UTF-8') %>
+                <%= yield.force_encoding("UTF-8") %>
                 <%= render partial: "avo/partials/footer" %>
               </div>
             </div>
@@ -50,23 +49,10 @@
         </div>
       </div>
     </div>
-    <%= turbo_frame_tag Avo::ACTIONS_TURBO_FRAME_ID, data: {turbo_temporary: 1} %>
-    <%= turbo_frame_tag 'attach_modal' %>
-    <%= turbo_frame_tag 'alerts', class: "fixed inset-0 bottom-0 flex flex-col space-y-4 items-end justify-right px-4 py-6 sm:p-6 justify-end z-[100] pointer-events-none" do %>
-      <%= render Avo::FlashAlertsComponent.new flashes: flash %>
-      <% # In case we have other general error messages %>
-      <% if @errors.present? %>
-        <% @errors.each do |message| %>
-          <%= render Avo::AlertComponent.new :error, message %>
-        <% end %>
-      <% end %>
-    <% end %>
+    <%= turbo_frame_tag Avo::MODAL_FRAME_ID %>
+    <%= render partial: "avo/partials/alerts" %>
     <%= render partial: "avo/partials/scripts" %>
-    <!-- Avo version: <%= Avo::VERSION %> -->
-    <!-- Environment: <%= Rails.env %> -->
-    <!-- License ID: <%= Avo.license.id %> -->
-    <!-- License valid?: <%= Avo.license.valid ? "valid" : "invalid" %>  -->
-    <!-- Plugins: <%= Avo.plugin_manager.to_s %> -->
+    <%= render partial: "avo/partials/confirm_dialog" %>
   </body>
 </html>
 <!-- ✨ Built with Avo • https://www.avohq.io/ -->

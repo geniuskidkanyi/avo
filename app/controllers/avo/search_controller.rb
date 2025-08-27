@@ -9,20 +9,30 @@ module Avo
     before_action :set_resource, only: :show
 
     def show
-      render json: search_resources([resource])
+      render json: search_resources([resource], request:)
     rescue => error
-      render_search_error(error)
+      render_error error, _label: error.message
+    end
+
+    def process_results(results, request:)
+      results
     end
 
     private
 
-    def search_resources(resources)
+    def search_resources(resources, request: nil)
+      process_results search_results(resources, request:), request:
+    end
+
+    def search_results(resources, request: nil)
       resources
         .map do |resource|
           # Apply authorization
-          next unless @authorization.set_record(resource.model_class).authorize_action(:search, raise_exception: false)
-          # Filter out the models without a search_query
-          next if resource.search_query.nil?
+          next unless @authorization.set_record(resource.model_class).authorize_action(
+            :search,
+            policy_class: resource.authorization_policy,
+            raise_exception: false
+          )
 
           search_resource resource
         end
@@ -37,21 +47,30 @@ module Avo
     end
 
     def search_resource(resource)
+      key = resource.name.pluralize.downcase
+
+      # If search query is not defined return error in dev and nil otwherwise.
+      if resource.search_query.blank?
+        return nil unless render_error?
+
+        search_query_undefined = error_payload(
+          header: "⚠️ Warning ⚠️",
+          help: "",
+          _label: "Search is disabled for #{resource}.\n To enable it please use this guide...",
+          _url: "https://docs.avohq.io/3.0/search.html#enable-search-for-a-resource"
+        )
+
+        return [key, search_query_undefined]
+      end
+
       query = Avo::ExecutionContext.new(
         target: resource.search_query,
         params: params,
+        q: params[:q].strip,
         query: resource.query_scope
       ).handle
 
-      query = apply_scope(query) if should_apply_any_scope?
-
-      # Get the count
-      results_count = query.reselect(resource.model_class.primary_key).count
-
-      # Get the results
-      query = query.limit(8)
-
-      results = apply_search_metadata(query, resource)
+      results_count, results = parse_results(query, resource)
 
       header = resource.plural_name
 
@@ -66,7 +85,7 @@ module Avo
         count: results.count
       }
 
-      [resource.name.pluralize.downcase, result_object]
+      [key, result_object]
     end
 
     # When searching in a `has_many` association and will scope out the records against the parent record.
@@ -93,9 +112,22 @@ module Avo
         reflection_class = BaseResource.get_model_by_name params[:via_reflection_class]
 
         grandparent = parent_resource_class.find params[:via_parent_resource_id]
-        parent = reflection_class.new(
-          params[:via_relation] => grandparent
-        )
+        parent = reflection_class.new
+
+        via_relation = params[:via_relation].to_s
+        # Whitelist allowed relations to prevent code injection
+        if reflection_class.reflections.keys.map(&:to_s).include?(via_relation)
+          # Verify if the relation is a collection proxy
+          # If it is, add the grandparent to the collection
+          # If it is not, set the grandparent as the parent of the relation
+          if parent.public_send(via_relation).is_a?(ActiveRecord::Associations::CollectionProxy)
+            parent.public_send(via_relation) << grandparent
+          else
+            parent.public_send(:"#{via_relation}=", grandparent)
+          end
+        else
+          raise ArgumentError, "Invalid relation name: #{via_relation}"
+        end
       end
 
       Avo::ExecutionContext.new(target: attach_scope, query: query, parent: parent).handle
@@ -111,6 +143,10 @@ module Avo
       # Apply policy scope if authorization is present
       query = resource.authorization&.apply_policy query
 
+      if field&.scope&.present?
+        query = Avo::ExecutionContext.new(target: field.scope, query:, parent:, resource:, parent_resource:).handle
+      end
+
       Avo::ExecutionContext.new(target: @resource.class.search_query, params: params, query: query).handle
     end
 
@@ -123,11 +159,19 @@ module Avo
     end
 
     def fetch_result_information(record, resource, item)
-      highlighted_title = highlight(item&.dig(:title) || resource.record_title&.to_s, params[:q])
+      title = item&.dig(:title) || resource.record_title
+      highlighted_title = highlight(title&.to_s, CGI.escapeHTML(params[:q] || ""))
+
+      record_path = if resource.link_to_child_resource
+        Avo.resource_manager.get_resource_by_model_class(record.class).new(record: record).record_path
+      else
+        resource.record_path
+      end
+
       {
-        _id: record.id,
+        _id: record.to_param,
         _label: highlighted_title,
-        _url: resource.class.fetch_search(:result_path, record: resource.record) || resource.record_path
+        _url: resource.class.fetch_search(:result_path, record: resource.record) || record_path
       }
     end
 
@@ -158,38 +202,93 @@ module Avo
     def fetch_field
       return if params[:via_association_id].nil?
 
-      reflection_resource = Avo.resource_manager.get_resource_by_model_class(params[:via_reflection_class]).new(
+      reflection_resource = parent_resource.new(
         view: Avo::ViewInquirer.new(params[:via_reflection_view]),
         record: parent,
         params: params,
         user: _current_user
       )
 
-      reflection_resource.detect_fields.get_field_definitions.find do |field|
-        field.id.to_s == params[:via_association_id]
-      end
+      reflection_resource.detect_fields.get_field(params[:via_association_id])
     end
 
     def fetch_parent
       return unless params[:via_reflection_id].present?
 
-      parent_resource = Avo.resource_manager.get_resource_by_model_class params[:via_reflection_class]
       parent_resource.find_record params[:via_reflection_id], params: params
     end
 
-    def render_search_error(error)
-      raise error unless Rails.env.development?
+    def parent_resource
+      @parent_resource ||= Avo.resource_manager.get_resource_by_model_class(params[:via_reflection_class])
+    end
+
+    def render_error(error, ...)
+      raise error unless render_error?
 
       render json: {
-        error: {
-          header: "🚨 An error occurred while searching. 🚨",
-          help: "Please see the error and fix it before deploying.",
-          results: {
-            _label: error.message
-          },
-          count: 1
-        }
+        error: error_payload(...)
       }, status: 500
+    end
+
+    def error_payload(
+      _label:,
+      _url: "",
+      header: "🚨 An error occurred during search 🚨",
+      help: "Please review and resolve the issue before deployment 🚨"
+    )
+      {
+        header:,
+        help:,
+        results: {
+          _label:,
+          _url:,
+          _error: true
+        },
+        count: 1
+      }
+    end
+
+    def search_results_count(resource)
+      if resource.search_results_count
+        Avo::ExecutionContext.new(
+          target: resource.search_results_count,
+          params: params
+        ).handle
+      else
+        Avo.configuration.search_results_count
+      end
+    end
+
+    def parse_results(query, resource)
+      # When using custom search services query should return an array of hashes
+      if query.is_a?(Array)
+        # Apply highlight
+        query.map do |result|
+          result[:_label] = highlight(result[:_label].to_s, CGI.escapeHTML(params[:q] || ""))
+        end
+
+        # Force count to 0 until implement an API to pass the count
+        results_count = 0
+
+        # Apply the limit
+        results = query.first(search_results_count(resource))
+      else
+        query = apply_scope(query) if should_apply_any_scope?
+
+        # Get the count
+        results_count = query.reselect(resource.model_class.primary_key).count
+
+        # Get the results
+        query = query.limit(search_results_count(resource))
+
+        results = apply_search_metadata(query, resource)
+      end
+
+      [results_count, results]
+    end
+
+    def render_error?
+      Rails.env.development?
     end
   end
 end

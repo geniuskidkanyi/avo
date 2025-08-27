@@ -1,16 +1,31 @@
 module Avo
   module Fields
-    class HasOneField < HasBaseField
-      attr_accessor :relation_method
+    class HasOneField < FrameBaseField
+      include Avo::Fields::Concerns::Nested
+
+      attr_reader :attach_fields,
+        :attach_scope
 
       def initialize(id, **args, &block)
-        hide_on :forms
+        initialize_nested(**args)
+
+        if @nested[:on]
+          nested_on = Array.wrap(@nested[:on])
+
+          if !nested_on.include?(:new)
+            hide_on :new
+          elsif !nested_on.include?(:edit)
+            hide_on :edit
+          end
+        else
+          hide_on :forms
+        end
 
         super(id, **args, &block)
 
         @placeholder ||= I18n.t "avo.choose_an_option"
-
-        @relation_method = name.to_s.parameterize.underscore
+        @attach_fields = args[:attach_fields]
+        @attach_scope = args[:attach_scope]
       end
 
       def label
@@ -19,24 +34,26 @@ module Avo
 
       def frame_url
         Avo::Services::URIService.parse(field_resource.record_path)
-          .append_paths(id, value.id)
+          .append_paths(id, value.to_param)
           .append_query(query_params)
           .to_s
       end
 
-      def fill_field(model, key, value, params)
+      def fill_field(record, key, value, params)
         if value.blank?
           related_record = nil
         else
-          related_class = model.class.reflections[name.to_s.downcase].class_name
+          related_class = record.class.reflections[name.to_s.downcase].class_name
           related_resource = Avo.resource_manager.get_resource_by_model_class(related_class)
           related_record = related_resource.find_record value
         end
 
-        model.public_send("#{key}=", related_record)
+        record.public_send(:"#{key}=", related_record)
 
-        model
+        record
       end
+
+      def is_searchable? = false
     end
   end
 end

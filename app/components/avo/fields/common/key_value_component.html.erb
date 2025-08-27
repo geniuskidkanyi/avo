@@ -15,7 +15,7 @@
           <%= @field.value_label %>
         </div>
         <% if @view.form? %>
-          <div class="flex items-center justify-center p-2 px-3 border-l border-gray-600">
+          <div class="flex items-center justify-center p-2 px-[48px] border-l border-gray-600">
             <a href="javascript:void(0);"
               title="<%= @field.action_text %>"
               data-tippy="tooltip"
@@ -25,7 +25,7 @@
                 class="cursor-not-allowed"
               <% end %>
             >
-              <%= svg 'plus-circle', class: 'text-gray-400 h-5 hover:text-gray-500' %>
+              <%= helpers.svg "heroicons/outline/plus-circle", class: 'text-gray-400 h-5 hover:text-gray-500' %>
             </a>
           </div>
         <% end %>
@@ -41,7 +41,7 @@
       data: {
         "key-value-target": 'input',
         view: @view,
-        **@field.get_html(:data, view: view, element: :input)
+        **@field.get_html(:data, view: @view, element: :input)
       }
     %>
   <% else %>
@@ -52,7 +52,7 @@
       data: {
         "key-value-target": 'input',
         view: @view,
-        **@field.get_html(:data, view: view, element: :input)
+        **@field.get_html(:data, view: @view, element: :input)
       }
     %>
   <% end %>

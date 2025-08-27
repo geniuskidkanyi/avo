@@ -42,6 +42,7 @@ RSpec.describe "Time field", type: :system do
         expect(text_input.value).to eq "16:30"
 
         save
+        wait_for_loaded
 
         expect(find_field_value_element("starting_at").text).to eq "16:30"
       end
@@ -56,8 +57,21 @@ RSpec.describe "Time field", type: :system do
         close_picker
 
         save
+        wait_for_loaded
 
         expect(find_field_value_element("starting_at").text).to eq "17:30"
+      end
+
+      it "resets the time when reset button is clicked" do
+        visit "/admin/resources/courses/#{course.id}/edit"
+
+        expect(text_input.value).to eq "16:30"
+
+        click_button("reset")
+        save
+        wait_for_loaded
+
+        expect(find_field_value_element("starting_at").text).to eq "—"
       end
     end
   end
@@ -94,6 +108,7 @@ RSpec.describe "Time field", type: :system do
         expect(text_input.value).to eq "16:30"
 
         save
+        wait_for_loaded
 
         expect(find_field_value_element("starting_at").text).to eq "16:30"
       end
@@ -108,6 +123,7 @@ RSpec.describe "Time field", type: :system do
         close_picker
 
         save
+        wait_for_loaded
 
         expect(find_field_value_element("starting_at").text).to eq "17:30"
       end
@@ -160,6 +176,7 @@ RSpec.describe "Time field", type: :system do
         close_picker
 
         save
+        wait_for_loaded
 
         expect(find_field_value_element("starting_at").text).to eq "17:30"
       end
@@ -198,6 +215,7 @@ RSpec.describe "Time field", type: :system do
         expect(text_input.value).to eq "08:30"
 
         save
+        wait_for_loaded
 
         expect(find_field_value_element("starting_at").text).to eq "08:30"
       end
@@ -212,6 +230,7 @@ RSpec.describe "Time field", type: :system do
         close_picker
 
         save
+        wait_for_loaded
 
         expect(find_field_value_element("starting_at").text).to eq "09:30"
       end

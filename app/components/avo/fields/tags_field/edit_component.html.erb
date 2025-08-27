@@ -1,14 +1,14 @@
-<%= field_wrapper **field_wrapper_args, data: {
+<%= field_wrapper(**field_wrapper_args, data: {
       controller: "tags-field",
       tags_field_mode_value: @field.mode,
-      tags_field_whitelist_items_value: @field.suggestions.to_json,
+      tags_field_whitelist_items_value: @field.whitelist_items,
       tags_field_disallowed_items_value: @field.disallowed.to_json,
       tags_field_enforce_suggestions_value: @field.enforce_suggestions,
       tags_field_suggestions_max_items_value: @field.suggestions_max_items,
       tags_field_close_on_select_value: @field.close_on_select,
       tags_field_delimiters_value: @field.delimiters,
       tags_field_fetch_values_from_value: @field.fetch_values_from,
-    } do %>
+    }) do %>
     <%# We use a dummy field so the back action from Turbo does not brake the field %>
     <%# dummy field %>
     <%= text_field_tag "#{@field.id}-dummy", '',
@@ -23,7 +23,7 @@
     %>
     <%# real field %>
     <%= @form.text_field @field.id,
-      class: classes("hidden w-full border-primary-500 focus-within:border-primary-500"),
+      class: classes("hidden w-full !py-0 min-h-10 items-center border-primary-500 focus-within:border-primary-500"),
       data: {
         tags_field_target: :input,
       },

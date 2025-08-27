@@ -3,9 +3,9 @@
   data: {
     model_name: @resource.model_name.to_s,
     resource_name: @resource.class.to_s,
-    record_id: @resource.record.id,
+    record_id: @resource.record_param,
     selected_resources_name: @resource.model_key,
-    selected_resources: [@resource.record.id],
+    selected_resources: [@resource.record_param],
     **@resource.stimulus_data_attributes
   } do %>
   <%= render_cards_component %>
@@ -15,11 +15,15 @@
     method: form_method,
     local: true,
     html: {
-      novalidate: true
+      novalidate: true,
+      data: {
+        controller: "form",
+        action: "keydown.ctrl+enter->form#submit keydown.meta+enter->form#submit"
+      }
     },
     multipart: true do |form| %>
     <%= render Avo::ReferrerParamsComponent.new back_path: back_path %>
-    <%= content_tag :div, class: 'space-y-12' do %>
+    <%= content_tag :div, class: "space-y-12" do %>
       <% @resource.get_items.each_with_index do |item, index| %>
         <%= render Avo::Items::SwitcherComponent.new(
           resource: @resource,
@@ -32,7 +36,7 @@
           form: form,
           parent_component: self,
           actions: @actions
-        )%>
+        ) %>
       <% end %>
 
       <% if Avo.configuration.buttons_on_form_footers %>

@@ -134,8 +134,10 @@ RSpec.describe "Actions", type: :system do
 
         wait_for_download
 
+        # sleep 15
+
         expect(downloaded?).to be true
-        expect(download_content).to eq File.read(Rails.root.join(file_name))
+        expect(download_content).to eq File.read(Rails.root.join("db", "seed_files", file_name))
         expect(download.split("/").last).to eq file_name
       end
     end
@@ -168,6 +170,35 @@ RSpec.describe "Actions", type: :system do
     end
   end
 
+  describe "action close_modal_on_backdrop_click" do
+    it "closes the modal on backdrop click" do
+      Avo::Actions::ExportCsv.close_modal_on_backdrop_click = true
+
+      visit "/admin/resources/projects"
+
+      click_on "Actions"
+      click_on "Export CSV"
+      find('[data-modal-target="backdrop"]').trigger("click")
+
+      expect(page).not_to have_selector '[data-controller="modal"]'
+    end
+
+    it "does not close the modal on backdrop click" do
+      Avo::Actions::ExportCsv.close_modal_on_backdrop_click = false
+
+      visit "/admin/resources/projects"
+
+      click_on "Actions"
+      click_on "Export CSV"
+      find('[data-modal-target="backdrop"]').trigger("click")
+
+      expect(page).to have_selector '[data-controller="modal"]'
+
+      click_on "Cancel"
+      expect(page).not_to have_selector '[data-controller="modal"]'
+    end
+  end
+
   describe "redirects when no confirmation" do
     it "redirects to hey page" do
       visit "/admin/resources/users"
@@ -177,12 +208,26 @@ RSpec.describe "Actions", type: :system do
 
       expect(page).to have_text "hey en"
     end
+
+    it "redirects to posts and don't redirect when navigating back" do
+      visit avo.resources_users_path
+
+      click_on "Actions"
+      click_on "Redirect to Posts"
+
+      wait_for_path_to_be(path: avo.resources_posts_path)
+
+      page.go_back
+
+      wait_for_path_to_be(path: avo.resources_users_path)
+    end
   end
 
-  describe "close_modal" do
-    it "closes the modal and flahses messages" do
+
+  describe "do_nothing" do
+    it "closes the modal and flashes messages" do
       allow(TestBuddy).to receive(:hi).and_call_original
-      expect(TestBuddy).to receive(:hi).with("Hello from Avo::Actions::Test::CloseModal handle method").at_least :once
+      expect(TestBuddy).to receive(:hi).with("Hello from Avo::Actions::Test::DoNothing handle method").at_least :once
 
       visit "/admin/resources/users/new"
 
@@ -190,13 +235,36 @@ RSpec.describe "Actions", type: :system do
 
 
       click_on "Actions"
+      click_on "Do Nothing"
+      expect(page).to have_css("turbo-frame#modal_frame")
+      expect(page).to have_selector(modal = "[role='dialog']")
+      click_on "Run"
+      expect(page).not_to have_selector(modal)
+      expect(page).to have_text "Nothing Done!!"
+      expect(page).to have_field('user_first_name', with: 'First name should persist after action.')
+    end
+  end
+
+  describe "close_modal" do
+    it "closes the modal and flashes messages" do
+      allow(TestBuddy).to receive(:hi).and_call_original
+      expect(TestBuddy).to receive(:hi).with("Hello from Avo::Actions::Test::CloseModal handle method").at_least :once
+
+      visit "/admin/resources/users/new"
+
+      fill_in "user_first_name", with: "First name should persist after action."
+
+      expect(page).to have_title("Create new user — Avocadelicious")
+
+      click_on "Actions"
       click_on "Close modal"
-      expect(page).to have_css('turbo-frame#actions_show')
+      expect(page).to have_css("turbo-frame#modal_frame")
       expect(page).to have_selector(modal = "[role='dialog']")
       click_on "Run"
       expect(page).not_to have_selector(modal)
       expect(page).to have_text "Modal closed!!"
-      expect(page).to have_field('user_first_name', with: 'First name should persist after action.')
+      expect(page).to have_title("Cool title")
+      expect(page).to have_field("user_first_name", with: "First name should persist after action.")
     end
   end
 
@@ -234,6 +302,199 @@ RSpec.describe "Actions", type: :system do
         open_panel_action(action_name: "Export CSV")
         run_action
         expect(page).to have_css('[data-component-name="avo/views/resource_index_component"]')
+      end
+    end
+  end
+
+  describe "query" do
+    let!(:users) { create_list :user, 6 }
+
+    it "access query action show" do
+      visit avo.resources_users_path(per_page: 3)
+
+      open_panel_action(action_name: "Test query access ")
+
+      expect(page).to have_text("message 0 selected")
+      expect(page).to have_field("fields_selected", with: "0 selected def fields")
+      expect(page).to have_text("cancel_button_label 0 selected")
+      expect(page).to have_text("confirm_button_label 0 selected")
+      expect(page).to have_text("Test query access 0")
+
+      run_action
+
+      expect(page).to have_text("succeed 0 selected")
+
+      check_select_all
+      open_panel_action(action_name: "Test query access ")
+
+      expect(page).to have_text("message 3 selected")
+      expect(page).to have_field("fields_selected", with: "3 selected def fields")
+      expect(page).to have_text("cancel_button_label 3 selected")
+      expect(page).to have_text("confirm_button_label 3 selected")
+      expect(page).to have_text("Test query access 3")
+
+      run_action
+
+      expect(page).to have_text("succeed 3 selected")
+
+      check_select_all
+      click_on "Select all matching"
+
+      open_panel_action(action_name: "Test query access ")
+
+      user_count = User.count
+
+      expect(page).to have_text("message #{user_count} selected")
+      expect(page).to have_field("fields_selected", with: "#{user_count} selected def fields")
+      expect(page).to have_text("cancel_button_label #{user_count} selected")
+      expect(page).to have_text("confirm_button_label #{user_count} selected")
+      expect(page).to have_text("Test query access #{user_count}")
+
+      run_action
+
+      expect(page).to have_text("succeed #{user_count} selected")
+    end
+  end
+
+  describe "fields" do
+    context "boolean group fields" do
+      it "pass through fields params" do
+        visit avo.resources_users_path
+
+        open_panel_action(action_name: "Dummy action")
+        check("fields_fun_switch_sure")
+
+        run_action
+        expect(page).to have_text "Sure, I love 🥑"
+      end
+    end
+  end
+
+  describe "fetch fields" do
+    it "don't fetch when load index" do
+      expect(TestBuddy).not_to receive(:hi).with("Dummy action fields")
+      visit avo.resources_users_path
+    end
+
+    it "fetch when click on action" do
+      expect(TestBuddy).to receive(:hi).with("Dummy action fields").at_least :once
+      visit avo.resources_users_path
+      open_panel_action(action_name: "Dummy action")
+    end
+  end
+
+  describe "arguments" do
+    it "access to arguments" do
+      visit avo.resources_fish_index_path
+
+      open_panel_action(action_name: "Dummy action")
+
+      run_action
+
+      expect(page).not_to have_text "Sure, I love 🥑"
+      expect(page).to have_text "I love 🥑"
+    end
+  end
+
+  describe "feedback notifications with timeout option" do
+    it "shows persistent flash message when timeout is :forever" do
+      visit avo.resources_fish_index_path
+
+      open_panel_action(action_name: "Dummy action")
+
+      run_action
+
+      alert = find('div[data-controller="alert"]', text: "I love 🥑")
+      expect(alert["data-alert-dismiss-after-value"]).to be_nil
+    end
+
+    it "overrides the default timeout when timeout is set" do
+      visit avo.resources_fish_index_path
+
+      open_panel_action(action_name: "Dummy action")
+
+      run_action
+
+      alert = find('div[data-controller="alert"]', text: "Warning response ✌️")
+      expect(alert["data-alert-dismiss-after-value"]).to eq "10000"
+    end
+  end
+
+  describe "callable labels" do
+    it "pick label from arguments on run and cancel" do
+      encoded_arguments = Avo::BaseAction.encode_arguments({
+        cancel_button_label: "Cancel dummy action",
+        confirm_button_label: "Confirm dummy action"
+      })
+
+      visit "#{avo.resources_users_path}/actions?action_id=Avo::Actions::Sub::DummyAction&arguments=#{encoded_arguments}"
+
+      expect(page).to have_text "Cancel dummy action"
+      expect(page).to have_text "Confirm dummy action"
+    end
+  end
+
+  describe "select items on grid view" do
+    let!(:post) { create :post }
+
+    it "enables and disables the actions" do
+      visit avo.resources_posts_path
+
+      # Find disabled action
+      click_on "Actions"
+      expect(page.find("a", text: "Toggle post published")["data-disabled"]).to eq "true"
+
+      # Hover grid element, select post, and verify that action is not disabled anymore
+      find("[data-component-name=\"avo/index/grid_item_component\"][data-resource-name=\"posts\"][data-record-id=\"#{post.to_param}\"]").hover
+      find('input[type="checkbox"][data-action="input->item-selector#toggle input->item-select-all#selectRow"]', visible: false).click
+      click_on "Actions"
+      expect(page.find("a", text: "Toggle post published")["data-disabled"]).to eq "false"
+
+      # Hover grid element, "unselect" post, and verify that action is disabled again
+      find("[data-component-name=\"avo/index/grid_item_component\"][data-resource-name=\"posts\"][data-record-id=\"#{post.to_param}\"]").hover
+      find('input[type="checkbox"][data-action="input->item-selector#toggle input->item-select-all#selectRow"]', visible: false).click
+      click_on "Actions"
+      expect(page.find("a", text: "Toggle post published")["data-disabled"]).to eq "true"
+    end
+  end
+
+  describe "record assignment" do
+    let!(:fish) { create :fish, name: "the index test" }
+
+    it "record is assigned when 1 selected from index view" do
+      visit avo.resources_fish_index_path
+
+      find("tr[data-resource-name=fish][data-record-id='#{fish.id}'] input[type=checkbox]").click
+
+      open_panel_action(action_name: "Release fish")
+      expect(page).to have_text "Are you sure you want to release the #{fish.name}?"
+      select admin.name, from: "fields_user_id"
+
+      run_action
+
+      expect(page).not_to have_text "1 fish released with message '' by #{admin.name}."
+    end
+  end
+
+  describe "reload records" do
+    let!(:post) { create :post, published_at: nil }
+
+    it "grid view" do
+      visit avo.resources_posts_path
+
+      grid_component = find("[id='avo/index/grid_item_component_#{post.to_param}']")
+
+      within grid_component do
+        expect(page).to have_text "Published: ❌"
+        grid_component.hover
+        find("input[type=checkbox]").click
+      end
+
+      open_panel_action(action_name: "Toggle post published")
+      run_action
+
+      within grid_component do
+        expect(page).to have_text "Published: ✅"
       end
     end
   end

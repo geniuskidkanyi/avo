@@ -1,13 +1,26 @@
-["3.1.4", "3.2.2", "3.3.0"].each do |ruby_version|
-  ["6.1", "7.1"].each do |rails_version|
+["3.1.4", "3.3.0"].each do |ruby_version|
+  ["6.1", "7.1", "8.0"].each do |rails_version|
+    # Rails 8 require ruby >= 3.2.0
+    next if ruby_version == "3.1.4" && rails_version == "8.0"
+
     appraise "rails-#{rails_version}-ruby-#{ruby_version}" do
       gem "psych", "< 4"
       gem "rails", "~> #{rails_version}"
-      gem "ransack", "~> 4.1", ">= 4.1.1"
+      gem "activestorage", "~> #{rails_version}"
+      gem "activestorage"
+      gem "acts-as-taggable-on"
 
-      # source "https://rubygems.pkg.github.com/avo-hq" do
-      #   gem "avo-dynamic_filters"
-      # end
+      if rails_version == "8.0" && ruby_version == "3.3.0"
+        gem "view_component", "4.0.0"
+      else
+        gem "view_component", "3.23.2"
+      end
+
+      if rails_version == "6.1"
+        # Fix `<module:LoggerThreadSafeLevel>': uninitialized constant ActiveSupport::LoggerThreadSafeLevel::Logger (NameError)
+        # https://stackoverflow.com/questions/79360526/uninitialized-constant-activesupportloggerthreadsafelevellogger-nameerror
+        gem "concurrent-ruby", "1.3.4"
+      end
     end
   end
 end

@@ -11,6 +11,8 @@ Gem.loaded_specs["avo"].dependencies.each do |d|
     require "active_storage/engine"
   when "actiontext"
     require "action_text/engine"
+  when "avo-heroicons"
+    require "avo/heroicons"
   else
     require d.name
   end
@@ -30,7 +32,7 @@ module Avo
       # After deploy we want to make sure the license response is being cleared.
       # We need a fresh license response.
       # This is disabled in development because the initialization process might be triggered more than once.
-      unless Rails.env.development?
+      if !Rails.env.development? && Avo.configuration.clear_license_response_on_deploy
         begin
           Licensing::HQ.new.clear_response
         rescue => exception
@@ -49,12 +51,35 @@ module Avo
       # This undoes Rails' previous nested directories behavior in the `app` dir.
       # More on this: https://github.com/fxn/zeitwerk/issues/250
       avo_directory = Rails.root.join("app", "avo").to_s
-      ActiveSupport::Dependencies.autoload_paths.delete(avo_directory)
+      engine_avo_directory = Avo::Engine.root.join("app", "avo").to_s
 
-      if Dir.exist?(avo_directory)
-        Rails.autoloaders.main.push_dir(avo_directory, namespace: Avo)
-        app.config.watchable_dirs[avo_directory] = [:rb]
+      [avo_directory, engine_avo_directory].each do |directory_path|
+        ActiveSupport::Dependencies.autoload_paths.delete(directory_path)
+
+        if Dir.exist?(directory_path)
+          Rails.autoloaders.main.push_dir(directory_path, namespace: Avo)
+          app.config.watchable_dirs[directory_path] = [:rb]
+        end
       end
+
+      # Add the mount_avo method to Rails
+      # rubocop:disable Style/ArgumentsForwarding
+      ActionDispatch::Routing::Mapper.include(Module.new {
+        def mount_avo(at: Avo.configuration.root_path, **options, &block)
+          mount Avo::Engine, at:, **options
+
+          scope at do
+            Avo.plugin_manager.engines.each do |engine|
+              mount engine[:klass], **engine[:options].dup
+            end
+
+            if block_given?
+              Avo::Engine.routes.draw(&block)
+            end
+          end
+        end
+      })
+      # rubocop:enable Style/ArgumentsForwarding
     end
 
     initializer "avo.reloader" do |app|

@@ -49,6 +49,9 @@ Avo.boot
 
 # ActiveRecord::Migrator.migrate(File.join(Rails.root, 'db/migrate'))
 
+# Ensure that there are no unpermitted_parameters logs
+ActionController::Parameters.action_on_unpermitted_parameters = :raise
+
 require "support/download_helpers"
 require "support/request_helpers"
 
@@ -109,6 +112,9 @@ RSpec.configure do |config|
   config.use_transactional_fixtures = true
   config.filter_run focus: true
   config.run_all_when_everything_filtered = true
+  config.before(:each) do
+    Rails.application.try(:reload_routes_unless_loaded)
+  end
 
   config.before(:each, type: :system) {
     browser_options = {
@@ -187,7 +193,8 @@ RSpec.configure do |config|
   # config.filter_gems_from_backtrace("gem name")
 
   # https://medium.com/@velciov.vlad/retrying-flaky-tests-fae14de26c1b
-  config.default_retry_count = 3
+  # only retry in CI environment
+  config.default_retry_count = ENV["CI"] ? 3 : 0
   config.verbose_retry = true
 
   # callback to be run between retries
@@ -201,7 +208,6 @@ end
 require "support/helpers"
 require "support/factory_bot"
 require "support/database_cleaner"
-require "support/wait_for_loaded"
 require "support/js_error_detector"
 require "support/devise"
 require "support/shared_contexts"

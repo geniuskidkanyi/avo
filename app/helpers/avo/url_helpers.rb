@@ -20,19 +20,13 @@ module Avo
     end
 
     def resource_path(
-      record:,
       resource:,
+      record: nil,
       resource_id: nil,
       keep_query_params: false,
       **args
     )
-      if record.respond_to? :id
-        id = record
-      elsif resource_id.present?
-        id = resource_id
-      end
-
-      avo.send :"resources_#{resource.singular_route_key}_path", id, **args
+      avo.send :"resources_#{resource.singular_route_key}_path", record || resource_id, **args
     end
 
     def preview_resource_path(
@@ -46,8 +40,8 @@ module Avo
       avo.send :"new_resources_#{resource.singular_route_key}_path", **args
     end
 
-    def edit_resource_path(record:, resource:, **args)
-      avo.send :"edit_resources_#{resource.singular_route_key}_path", record, **args
+    def edit_resource_path(resource:, record: nil, resource_id: nil, **args)
+      avo.send :"edit_resources_#{resource.singular_route_key}_path", record || resource_id, **args
     end
 
     def resource_attach_path(resource, record_id, related_name, related_id = nil)
@@ -67,6 +61,7 @@ module Avo
       parent_record,
       record,
       keep_query_params: false,
+      parent_resource: nil,
       **args
     )
       return if record.nil?
@@ -81,7 +76,9 @@ module Avo
       rescue
       end
 
-      avo.resources_associations_index_path(parent_record.model_name.route_key, record.id, **existing_params, **args)
+      route_key = parent_resource&.route_key || parent_record.model_name.route_key
+
+      avo.resources_associations_index_path(route_key, record.to_param, **existing_params, **args)
     end
 
     def resource_view_path(**args)

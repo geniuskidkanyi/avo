@@ -2,9 +2,7 @@ Avo.configure do |config|
   ## == Base configs ==
   config.root_path = "/admin"
   config.app_name = -> { "Avocadelicious #{params[:app_name_suffix]}" }
-  config.home_path = -> { "/admin/resources/projects" }
   config.home_path = -> { avo.resources_projects_path }
-  # config.mount_avo_engines = false
   # config.default_url_options = [:tenant_id]
   # Use this to test root_path_without_url helper
   # Also enable in config.ru & application.rb
@@ -14,9 +12,12 @@ Avo.configure do |config|
 
   ## == Licensing ==
   config.license_key = ENV["AVO_LICENSE_KEY"]
+  config.exclude_from_status = ["license_key"]
 
   ## == App context ==
   config.current_user_method = :current_user
+  # config.is_admin_method = :is_admin?
+  # config.is_developer_method = :is_developer?
   config.model_resource_mapping = {
     User: "User"
   }
@@ -27,18 +28,24 @@ Avo.configure do |config|
       params: request.params
     }
   end
+  config.locale = :en
   # config.raise_error_on_missing_policy = true
   # config.authorization_client = "Avo::Services::AuthorizationClients::ExtraPunditClient"
+  # Shouldn't impact on community only if custom authorization service was configured.
+  config.explicit_authorization = true
 
   ## == Customization ==
   config.id_links_to_resource = true
   config.full_width_container = false
   config.buttons_on_form_footers = false
-  # config.resource_controls_placement = ENV["AVO_RESOURCE_CONTROLS_PLACEMENT"]&.to_sym || :right
   config.resource_default_view = :show
   config.search_debounce = 300
   # config.field_wrapper_layout = :stacked
-  config.cache_resource_filters = false
+  config.click_row_to_view_record = true
+
+  config.turbo = {
+    instant_click: true
+  }
 
   ## == Branding ==
   config.branding = {
@@ -70,62 +77,31 @@ Avo.configure do |config|
   #   "Avo::Resources::Fish"
   # ]
 
+  config.alert_dismiss_time = 5000
+  config.search_results_count = 8
+  config.associations_lookup_list_limit = 1000
+
   ## == Menus ==
-  config.main_menu = -> do
-    section "Resources", icon: "heroicons/solid/building-storefront", collapsable: true, collapsed: false do
-      group "Company", collapsable: true do
-        resource :projects
-        resource :team
-        resource :team_membership
-        resource :reviews
-      end
-
-      group "People", collapsable: true do
-        resource "User"
-        resource :people
-        resource :spouses
-      end
-
-      group "Education", collapsable: true do
-        resource :course
-        resource :course_link
-      end
-
-      group "Blog", collapsable: true do
-        # resource :z_posts
-        resource :posts
-        resource :comments
-        resource :photo_comments
-      end
-
-      section "Store", icon: "currency-dollar" do
-        resource :products
-        resource :stores
-      end
-
-      group "Other", collapsable: true, collapsed: true do
-        resource :fish, label: "Fishies"
-        resource :events
-      end
-    end
-
-    section "Geography", icon: "heroicons/outline/globe", collapsable: true, collapsed: true do
-      resource :city
-    end
-
-    section "Tools", icon: "heroicons/outline/finger-print", collapsable: true, collapsed: true do
-      all_tools
-    end
-
-    group do
+  if Rails.env.test?
+    config.main_menu = -> do
       link "Avo", "https://avohq.io"
-      link_to "Google", "https://google.com", target: :_blank
     end
   end
-  config.profile_menu = -> do
-    link "Profile", path: "/profile", icon: "user-circle"
-    # link_to "Sign out", path: main_app.destroy_user_session_path, icon: "user-circle", method: :post, params: {hehe: :hoho}
-  end
+  # end
+  # config.profile_menu = -> do
+  #   link "Profile", path: "/profile", icon: "heroicons/outline/user-circle"
+  #   # link_to "Sign out", path: main_app.destroy_user_session_path, icon: "user-circle", method: :post, params: {hehe: :hoho}
+  # end
+
+  # config.pagination = -> do
+  #   {
+  #     type: :countless
+  #   }
+  # end
+
+  config.column_names_mapping = {
+    custom_css: {field: "code"}
+  }
 end
 
 if defined?(Avo::DynamicFilters)
@@ -135,12 +111,20 @@ if defined?(Avo::DynamicFilters)
   end
 end
 
+if defined?(Avo::MediaLibrary)
+  Avo::MediaLibrary.configure do |config|
+    config.visible = -> { Avo::Current.user.is_developer? }
+    config.enabled = true
+  end
+end
+
 Rails.configuration.to_prepare do
   Avo::Fields::BaseField.include ActionView::Helpers::UrlHelper
   Avo::Fields::BaseField.include ActionView::Context
   Avo::ApplicationController.include ApplicationControllerExtensions
+  Avo::ApplicationController.helper Rails.application.helpers
 end
 
-Avo.on_load(:boot) do
+ActiveSupport.on_load(:avo_boot) do
   Avo.plugin_manager.register_field :color_pickerrr, Avo::Fields::ColorPickerField
 end

@@ -14,11 +14,12 @@ RSpec.feature Avo::SearchController, type: :controller do
       via_association_id: "user",
       via_reflection_class: "Review",
       via_reflection_id: 1,
-      via_reflection_view: "edit"
+      via_reflection_view: "edit",
+      q: ""
     }
 
     expect(json["users"]["results"].count).to eq 1
-    expect(json["users"]["results"].first["_id"]).to eq admin.id
+    expect(json["users"]["results"].first["_id"]).to eq admin.to_param
   end
 
   it "returns only the team that starts with the letter H" do
@@ -28,11 +29,12 @@ RSpec.feature Avo::SearchController, type: :controller do
       via_association_id: "reviewable",
       via_reflection_class: "Review",
       via_reflection_id: 1,
-      via_reflection_view: "new"
+      via_reflection_view: "new",
+      q: ""
     }
 
     expect(json["teams"]["results"].count).to eq 1
-    expect(json["teams"]["results"].first["_id"]).to eq team.id
+    expect(json["teams"]["results"].first["_id"]).to eq team.to_param
     expect(json["teams"]["results"].first["_label"]).to eq "Hershey"
   end
 end

@@ -1,18 +1,14 @@
 # frozen_string_literal: true
 
-class Avo::AlertComponent < ViewComponent::Base
+class Avo::AlertComponent < Avo::BaseComponent
   include Avo::ApplicationHelper
 
-  attr_reader :type
-  attr_reader :message
-
-  def initialize(type, message)
-    @type = type
-    @message = message
-  end
+  prop :type, kind: :positional
+  prop :message, kind: :positional
+  prop :timeout
 
   def icon
-    return "heroicons/solid/x-circle" if is_error?
+    return "heroicons/solid/exclamation-circle" if is_error?
     return "heroicons/solid/exclamation" if is_warning?
     return "heroicons/solid/exclamation-circle" if is_info?
     return "heroicons/solid/check-circle" if is_success?
@@ -31,7 +27,7 @@ class Avo::AlertComponent < ViewComponent::Base
       " bg-green-500 border-green-600"
     elsif is_warning?
       " bg-orange-400 border-orange-600"
-    elsif is_info?
+    else
       " bg-blue-400 border-blue-600"
     end
 
@@ -39,22 +35,31 @@ class Avo::AlertComponent < ViewComponent::Base
   end
 
   def is_error?
-    type.to_sym == :error || type.to_sym == :alert
+    @type.to_sym == :error || @type.to_sym == :alert
   end
 
   def is_success?
-    type.to_sym == :success
+    @type.to_sym == :success
   end
 
   def is_info?
-    type.to_sym == :notice || type.to_sym == :info
+    @type.to_sym == :notice || @type.to_sym == :info
   end
 
   def is_warning?
-    type.to_sym == :warning
+    @type.to_sym == :warning
   end
 
   def is_empty?
-    message.nil?
+    @message.nil?
+  end
+
+  def timeout
+    return @timeout if @timeout.is_a?(Numeric)
+    Avo.configuration.alert_dismiss_time
+  end
+
+  def keep_open?
+    @timeout.try(:to_sym) == :forever
   end
 end

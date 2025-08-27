@@ -4,11 +4,13 @@ class Avo::Resources::Items::Tab
   include Avo::Concerns::HasItems
   include Avo::Concerns::HasItemType
   include Avo::Concerns::VisibleItems
+  include Avo::Concerns::IsVisible
   include Avo::Concerns::VisibleInDifferentViews
 
   delegate :items, :add_item, to: :items_holder
 
   attr_accessor :description
+  attr_reader :lazy_load
 
   def initialize(name: nil, description: nil, view: nil, **args)
     @name = name
@@ -16,6 +18,8 @@ class Avo::Resources::Items::Tab
     @items_holder = Avo::Resources::Items::Holder.new
     @view = Avo::ViewInquirer.new view
     @args = args
+    @visible = args[:visible]
+    @lazy_load = args[:lazy_load]
 
     post_initialize if respond_to?(:post_initialize)
   end
@@ -30,8 +34,8 @@ class Avo::Resources::Items::Tab
   alias_method :to_param, :id
 
   def turbo_frame_id(parent: nil)
-    id = "#{Avo::Resources::Items::Tab.to_s.parameterize} #{name}".parameterize
-
+    digest_name = Digest::MD5.hexdigest(name)
+    id = "#{Avo::Resources::Items::Tab.to_s.parameterize} #{digest_name}".parameterize
     return id if parent.nil?
 
     "#{parent.turbo_frame_id} #{id}".parameterize

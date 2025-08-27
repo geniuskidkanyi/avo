@@ -88,6 +88,10 @@ module Avo
       "bg-white rounded shadow-md"
     end
 
+    def card_classes
+      "bg-white rounded shadow-panel"
+    end
+
     def get_model_class(model)
       if model.instance_of?(Class)
         model
@@ -130,11 +134,52 @@ module Avo
     end
 
     def frame_id(resource)
-      ["frame", resource.model_name.singular, resource.record.id].compact.join("-")
+      ["frame", resource.model_name.singular, resource.record_param].compact.join("-")
     end
 
     def chart_color(index)
       Avo.configuration.branding.chart_colors[index % Avo.configuration.branding.chart_colors.length]
+    end
+
+    def possibly_rails_authentication?
+      defined?(Authentication) && Authentication.private_instance_methods.include?(:require_authentication) && Authentication.private_instance_methods.include?(:authenticated?)
+    end
+
+    def pagy_major_version
+      return nil unless defined?(Pagy::VERSION)
+      version = Pagy::VERSION&.split(".")&.first&.to_i
+
+      return "8-or-more" if version >= 8
+
+      version
+    end
+
+    def container_is_full_width?
+      if @container_full_width.present?
+        @container_full_width
+      elsif Avo.configuration.full_width_container
+        true
+      elsif Avo.configuration.full_width_index_view && action_name.to_sym == :index && controller.class.superclass.to_s == "Avo::ResourcesController"
+        true
+      else
+        false
+      end
+    end
+
+    def container_classes
+      container_is_full_width? ? "" : "2xl:container 2xl:mx-auto"
+    end
+
+    # encode & encrypt params
+    def e(value)
+      Avo::Services::EncryptionService.encrypt(message: value, purpose: :return_to, serializer: Marshal)
+    end
+
+    # decrypt & decode params
+    def d(value)
+      Avo::Services::EncryptionService.decrypt(message: value, purpose: :return_to, serializer: Marshal)
+    rescue
+      value
     end
 
     private

@@ -31,22 +31,22 @@ Gem::Specification.new do |spec|
   spec.required_ruby_version = ">= 3.0.0"
   spec.post_install_message = "Thank you for using Avo 💪  Docs are available at https://docs.avohq.io"
 
-  spec.files = Dir["{bin,app,config,db,lib,public}/**/*", "MIT-LICENSE", "Rakefile", "README.md", "avo.gemspec", "Gemfile", "Gemfile.lock", "tailwind.preset.js", "tailwind.custom.js"]
-  spec.files.reject! { |file_name| %w[application.js application.js.map avo.custom.js avo.custom.js.map].any? { |rejected_file| file_name.include? rejected_file } }
+  spec.files = Dir["{bin,app,config,db,lib,public}/**/*", "Rakefile", "README.md", "avo.gemspec", "Gemfile", "Gemfile.lock", "tailwind.preset.js", "tailwind.custom.js"]
+  spec.files.reject! { |file_name| %w[application.js application.js.map app/assets/builds/avo.custom.js avo.custom.js.map].any? { |rejected_file| file_name.include? rejected_file } }
 
   spec.add_dependency "activerecord", ">= 6.1"
   spec.add_dependency "activesupport", ">= 6.1"
   spec.add_dependency "actionview", ">= 6.1"
   spec.add_dependency "pagy", "7.0.0"
   spec.add_dependency "zeitwerk", ">= 2.6.12"
-  spec.add_dependency "httparty"
   spec.add_dependency "active_link_to"
   spec.add_dependency "view_component", "<= 3.23.2"
   spec.add_dependency "turbo-rails", ">= 2.0.0"
   spec.add_dependency "turbo_power", ">= 0.6.0"
   spec.add_dependency "addressable"
   spec.add_dependency "meta-tags"
-  spec.add_dependency "dry-initializer"
   spec.add_dependency "docile"
   spec.add_dependency "inline_svg"
+  spec.add_dependency "prop_initializer", ">= 0.2.0"
+  spec.add_dependency "avo-heroicons", ">= 0.1.1"
 end

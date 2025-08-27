@@ -1,19 +1,16 @@
 # frozen_string_literal: true
 
-class Avo::ModalComponent < ViewComponent::Base
+class Avo::ModalComponent < Avo::BaseComponent
   renders_one :heading
   renders_one :controls
 
-  attr_reader :width
-  attr_reader :body_class
-
-  def initialize(width: :md, body_class: nil)
-    @width = width
-    @body_class = body_class
-  end
+  prop :width, default: :md
+  prop :body_class
+  prop :overflow, default: :auto
+  prop :close_modal_on_backdrop_click, default: true, reader: :public
 
   def width_classes
-    case width.to_sym
+    case @width.to_sym
     when :md
       "w-11/12 lg:w-1/2 sm:max-w-168"
     when :xl
@@ -22,6 +19,10 @@ class Avo::ModalComponent < ViewComponent::Base
   end
 
   def height_classes
-    "max-h-full min-h-1/4 max-h-11/12"
+    "max-h-[calc(100dvh-5rem)] min-h-1/4"
+  end
+
+  def overflow_classes
+    @overflow == :auto ? "overflow-auto" : ""
   end
 end

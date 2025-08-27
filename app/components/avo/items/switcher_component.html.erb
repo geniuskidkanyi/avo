@@ -9,9 +9,11 @@
 <% elsif item.is_field? %>
   <%= render field_component %>
 <% elsif item.is_row? %>
-  <%= render Avo::RowComponent.new do |c| %>
+  <%= render Avo::RowComponent.new(divider: item.divider) do |c| %>
     <% c.with_body do %>
       <%= render Avo::Items::VisibleItemsComponent.new resource: @resource, item: @item, view: @view, form: @form %>
     <% end %>
   <% end %>
+<% elsif item.is_collaboration? %>
+  <%= render Avo::Collaborate::TimelineComponent.new(resource: @resource) %>
 <% end %>

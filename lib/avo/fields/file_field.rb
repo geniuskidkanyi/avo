@@ -24,6 +24,18 @@ module Avo
       def path
         rails_blob_url value
       end
+
+      def value
+        final_value = super
+
+        # On edit view always show the persisted image. Related: issue#3008
+        if final_value.instance_of?(ActiveStorage::Attached::One) && @view.edit?
+          persisted_record = @resource.find_record(@record.to_param)
+          final_value = persisted_record.send(attribute_id)
+        end
+
+        final_value
+      end
     end
   end
 end

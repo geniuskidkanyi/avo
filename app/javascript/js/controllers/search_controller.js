@@ -3,7 +3,7 @@ import * as Mousetrap from 'mousetrap'
 import { Controller } from '@hotwired/stimulus'
 import { Turbo } from '@hotwired/turbo-rails'
 import { autocomplete } from '@algolia/autocomplete-js'
-import { sanitize } from 'dompurify'
+import DOMPurify from 'dompurify'
 import URI from 'urijs'
 import debouncePromise from '../helpers/debounce_promise'
 
@@ -23,6 +23,10 @@ export default class extends Controller {
     'clearValue',
     'clearButton',
   ]
+
+  static values = {
+    extraParams: Object,
+  }
 
   debouncedFetch = debouncePromise(fetch, this.searchDebounce)
 
@@ -86,6 +90,12 @@ export default class extends Controller {
       autoFocus: true,
       openOnFocus: true,
       detachedMediaQuery: '',
+      onStateChange({ prevState, state }) {
+        // If is closed and was open clear query value
+        if (!state.isOpen && prevState.isOpen) {
+          state.query = ''
+        }
+      },
       getSources: ({ query }) => {
         document.body.classList.add('search-loading')
         const endpoint = that.searchUrl(query)
@@ -158,7 +168,7 @@ export default class extends Controller {
             )
           }
 
-          const label = sanitize(item._label)
+          const label = DOMPurify.sanitize(item._label)
 
           const labelChildren = [
             createElement(
@@ -171,7 +181,7 @@ export default class extends Controller {
           ]
 
           if (item._description) {
-            const description = sanitize(item._description)
+            const description = DOMPurify.sanitize(item._description)
 
             labelChildren.push(
               createElement(
@@ -206,11 +216,9 @@ export default class extends Controller {
   }
 
   handleOnSelect({ item }) {
-    if (this.isBelongsToSearch) {
+    if (this.isBelongsToSearch && !item._error) {
       this.updateFieldAttribute(this.hiddenIdTarget, 'value', item._id)
       this.updateFieldAttribute(this.buttonTarget, 'value', this.removeHTMLTags(item._label))
-
-      document.querySelector('.aa-DetachedOverlay').remove()
 
       if (this.hasClearButtonTarget) {
         this.clearButtonTarget.classList.remove('hidden')
@@ -250,6 +258,7 @@ export default class extends Controller {
       ...Object.fromEntries(new URLSearchParams(window.location.search)),
       q: query,
       global: false,
+      ...this.extraParamsValue,
     }
 
     if (this.isGlobalSearch) {

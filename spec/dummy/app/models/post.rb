@@ -14,9 +14,20 @@
 #  slug         :string
 #
 class Post < ApplicationRecord
-  enum status: [:draft, :published, :archived]
+  if Gem::Version.new(Rails.version) >= Gem::Version.new("7.1.0")
+    enum :status, [:draft, :published, :archived]
+  else
+    enum status: [:draft, :published, :archived]
+  end
 
   validates :name, presence: true
+
+  # Trigger TypeError: no _dump_data is defined for class Proc when serializing query
+  # Test it by applying a status filter
+  # Only for rails > 7.1
+  # normalizes :status, with: ->(status) {
+  #   status
+  # }
 
   has_one_attached :cover_photo
   has_one_attached :audio
@@ -26,7 +37,7 @@ class Post < ApplicationRecord
   has_many :comments, as: :commentable
   has_many :reviews, as: :reviewable
 
-  acts_as_taggable_on :tags
+  acts_as_ordered_taggable_on :tags
 
   before_save :update_slug
 

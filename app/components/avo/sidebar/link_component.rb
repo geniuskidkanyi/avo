@@ -1,25 +1,23 @@
 # frozen_string_literal: true
 
-class Avo::Sidebar::LinkComponent < ViewComponent::Base
-  attr_reader :active
-  attr_reader :target
-  attr_reader :label
-  attr_reader :path
-  attr_reader :data
-  attr_reader :icon
+require "view_component/version"
 
-  def initialize(label: nil, path: nil, active: :inclusive, target: nil, data: {}, icon: nil)
-    @label = label
-    @path = path
-    @active = active
-    @target = target
-    @data = data
-    @icon = icon
+class Avo::Sidebar::LinkComponent < Avo::BaseComponent
+  prop :label
+  prop :path
+  prop :active, default: :inclusive do |value|
+    value&.to_sym
   end
+  prop :target do |value|
+    value&.to_sym
+  end
+  prop :data, default: {}.freeze
+  prop :icon
+  prop :args, kind: :**, default: {}.freeze
 
   def is_external?
     # If the path contains the scheme, check if it includes the root path or not
-    return !path.include?(Avo.mount_path) if URI(path).scheme.present?
+    return !@path.include?(helpers.mount_path) if URI(@path).scheme.present?
 
     false
   end
@@ -27,6 +25,15 @@ class Avo::Sidebar::LinkComponent < ViewComponent::Base
   # For external links active_link_to marks them all as active.
   def link_method
     is_external? ? :link_to : :active_link_to
+  end
+
+  # Backwards compatibility with ViewComponent 3.x
+  def link_caller
+    if Gem::Version.new(ViewComponent::VERSION::STRING) >= Gem::Version.new("4.0.0")
+      helpers
+    else
+      self
+    end
   end
 
   def classes

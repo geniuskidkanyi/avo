@@ -3,7 +3,11 @@ pt-BR:
   avo:
     action_ran_successfully: Ação executada com sucesso!
     actions: Ações
+    add_filter: Adicionar filtro
     and_x_other_resources: e %{count} outros recursos
+    applied:
+      one: aplicado
+      other: aplicados
     are_you_sure: Você tem certeza?
     are_you_sure_detach_item: Você tem certeza que deseja separar este %{item}.
     are_you_sure_you_want_to_run_this_option: Você tem certeza que deseja executar esta ação?
@@ -13,14 +17,19 @@ pt-BR:
     attachment_class_attached: "%{attachment_class} anexado."
     attachment_class_detached: "%{attachment_class} separado."
     attachment_destroyed: Anexo destruído
+    attachment_failed: Não foi possível anexar %{attachment_class}
     cancel: Cancelar
     choose_a_country: Escolha um país
     choose_an_option: Escolha uma opção
     choose_item: Escolher %{item}
     clear_value: Limpar valor
     click_to_reveal_filters: Clique para revelar os filtros
+    close: Fechar
+    close_modal: Fechar modal
     confirm: Confirmar
+    copy: Copiar
     create_new_item: Criar novo %{item}
+    created_at_timestamp: Criado em %{created_at}
     dashboard: Painel
     dashboards: Painéis
     default_scope: Todos
@@ -38,6 +47,9 @@ pt-BR:
     failed: Falhou
     failed_to_find_attachment: Falhou ao achar anexo
     failed_to_load: Falha ao carregar
+    file:
+      one: ficheiro
+      other: ficheiros
     filter_by: Filtrar por
     filters: Filtros
     go_back: Voltar
@@ -48,12 +60,21 @@ pt-BR:
       add_row: Adicionar linha
       delete_row: Remover linha
       key: Chave
+      reorder_row: Reordenar linha
       value: Valor
+    less_content: Menos conteúdo
     list_is_empty: Lista vazia
     loading: Carregando
+    media_library:
+      title: Biblioteca de Mídia
     more: Mais
+    more_content: Mais conteúdo
+    more_records_available: Existem mais registros disponíveis.
+    nested:
+      add_new_item: Adicionar novo %{item}
     new: novo
     next_page: Próxima página
+    no_cancel: Não, cancelar
     no_cards_present: Nenhum cartão presente
     no_item_found: Nenhum registro encontrado
     no_options_available: Nenhuma opção disponível
@@ -74,6 +95,7 @@ pt-BR:
     prev_page: Página anterior
     records_selected_from_all_pages_html: Todos os registros de todas as páginas selecionados
     remove_selection: Remover seleção
+    reset: resetar
     reset_filters: Limpar filtros
     resource_created: Recurso criado
     resource_destroyed: Recurso destruído
@@ -89,14 +111,20 @@ pt-BR:
     select_item: Selecionar item
     show_content: Mostrar conteúdo
     sign_out: sair
+    sort_asc: Ordenar em ordem crescente
+    sort_desc: Ordenar em ordem decrescente
+    sort_reset: Redefinir ordenação
     switch_to_view: Alterar para visão %{view_type}
     table_view: Visualização em tabela
+    this_field_has_attachments_disabled: Este campo tem anexos desativados.
     tools: Ferramentas
     type_to_search: Digite para buscar.
     unauthorized: Não autorizado
     undo: desfazer
+    updated_at_timestamp: Atualizado em %{updated_at}
     view: Visualizar
     view_item: visualizar %{item}
+    visit_record_on_external_path: Visitar registro através de link externo
     was_successfully_created: foi criado com sucesso
     was_successfully_updated: foi atualizado com sucesso
     x_items_more:
@@ -106,4 +134,7 @@ pt-BR:
     x_records_selected_from_a_total_of_x_html: <span class="font-bold text-gray-700">%{selected}</span> registros selecionados nesta página de um total de <span class="font-bold text-gray-700">%{count}</span>
     x_records_selected_from_all_pages_html: <span class="font-bold text-gray-700">%{count}</span> registros selecionados de todas as páginas
     x_records_selected_from_page_html: <span class="font-bold text-gray-700">%{selected}</span> registros selecionados nesta página
+    yes_confirm: Sim, tenho certeza
+    you_cant_upload_new_resource: Você não pode fazer upload de imagens no editor Trix até salvar o recurso.
+    you_havent_set_attachment_key: Você precisa definir uma `attachment_key` para este campo Trix.
     you_missed_something_check_form: Você pode ter esquecido algo. Por favor, cheque o formulário.

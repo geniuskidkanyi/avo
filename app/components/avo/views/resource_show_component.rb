@@ -3,17 +3,18 @@
 class Avo::Views::ResourceShowComponent < Avo::ResourceComponent
   include Avo::ApplicationHelper
 
-  attr_reader :actions, :display_breadcrumbs
+  attr_reader :display_breadcrumbs
 
-  def initialize(resource: nil, reflection: nil, parent_resource: nil, parent_record: nil, resource_panel: nil, actions: [])
-    @resource = resource
-    @reflection = reflection
-    @resource_panel = resource_panel
-    @actions = actions
-    @parent_record = parent_record
-    @parent_resource = parent_resource
+  prop :resource
+  prop :reflection
+  prop :parent_resource
+  prop :parent_record
+  prop :resource_panel, reader: :public
+  prop :actions, default: [].freeze, reader: :public
+
+  def after_initialize
     @view = Avo::ViewInquirer.new("show")
-    @display_breadcrumbs = reflection.blank?
+    @display_breadcrumbs = @reflection.blank?
   end
 
   def title
@@ -27,10 +28,13 @@ class Avo::Views::ResourceShowComponent < Avo::ResourceComponent
   end
 
   def back_path
+    # The `return_to` param takes precedence over anything else.
+    return params[:return_to] if params[:return_to].present?
+
     if via_resource?
-      helpers.resource_path(record: association_resource.model_class, resource: association_resource, resource_id: params[:via_record_id])
+      helpers.resource_path(resource: association_resource, resource_id: params[:via_record_id])
     else
-      helpers.resources_path(resource: @resource)
+      helpers.resources_path(resource: @resource, **keep_referrer_params)
     end
   end
 
@@ -43,21 +47,23 @@ class Avo::Views::ResourceShowComponent < Avo::ResourceComponent
     elsif @parent_resource.present?
       {
         via_resource_class: @parent_resource.class,
-        via_record_id: @parent_record.id
+        via_record_id: @parent_record.to_param
       }
     else
       {}
     end
+
+    # Return to the current url if it doesn't include turbo_frame
+    # When coming from a turbo frame, we don't want to return to that exact frame
+    # for example when editing a has_one field we want to return to the parent frame
+    # not the frame of the has_one field.
+    args[:return_to] = request.url unless request.url.include?("turbo_frame=")
 
     helpers.edit_resource_path(record: @resource.record, resource: @resource, **args)
   end
 
   def controls
     @resource.render_show_controls
-  end
-
-  def view_for(field)
-    @view
   end
 
   private
